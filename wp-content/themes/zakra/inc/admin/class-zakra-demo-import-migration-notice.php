@@ -47,31 +47,28 @@ if ( ! class_exists( 'Zakra_Demo_Import_Migration_Notice' ) ) {
 			$demo_imported  = get_option( 'themegrill_demo_importer_activated_id' );
 			$notice_dismiss = get_option( 'zakra_demo_import_migration_notice_dismiss' );
 
-			if ( ! $notice_dismiss ) :
-
-				if ( $demo_imported && ( false !== strpos( $demo_imported, 'zakra' ) ) ) :
-					?>
+			if ( ! $notice_dismiss && Zakra_Migration::maybe_run_migration() ) :
+				?>
 					<div class="notice notice-info zakra-notice demo-import-migrate-notice" style="position:relative;">
 						<p>
 							<?php
 							esc_html_e(
-								'It looks like you have imported one of the demos recently. Please check your site, if fonts and background are not the same as in the demo. Please click the \'Fix Imported Demo\' button below.',
+								"It seems you've either imported Zakra demos recently or updated Zakra to 3.0 version. After these actions, if you've seen any design issues in your site, please try clicking the button below:",
 								'zakra'
 							);
 							?>
 						</p>
 						<p>
 							<a href="<?php echo esc_url( $this->dismiss_url ); ?>" class="btn button-primary">
-								<span><?php esc_html_e( 'Fix Imported Demo', 'zakra' ); ?></span>
+								<span><?php esc_html_e( 'Fix Migration Issue', 'zakra' ); ?></span>
 							</a>
-							<a href="<?php echo esc_url( 'https://zakratheme.com/contact/' ); ?>" class="btn button-secondary" target="_blank">
-								<span><?php esc_html_e( 'Any confusion?', 'zakra' ); ?></span>
+							<a href="<?php echo esc_url( 'https://zakratheme.com/support/' ); ?>" class="btn button-secondary" target="_blank">
+								<span><?php esc_html_e( 'Contact Support', 'zakra' ); ?></span>
 							</a>
 						</p>
 						<a class="notice-dismiss" href="<?php echo esc_url( $this->dismiss_url ); ?>"></a>
 					</div>
 					<?php
-				endif;
 			endif;
 		}
 

@@ -22,6 +22,34 @@ $trash_link = wp_nonce_url(
 	'trash-entry'
 );
 
+$form_entries = evf_get_entries_by_form_id( $form_id, '', '', true );
+$form_entries = array_map(
+	function ( $el ) {
+		return $el['entry_id'];
+	},
+	$form_entries
+);
+
+$entry_index    = array_search( $entry_id, $form_entries ); //phpcs:ignore
+$prev_entry     = '';
+$next_entry     = '';
+$prev_entry_url = '#';
+$next_entry_url = '#';
+
+if ( false !== $entry_index ) {
+	if ( isset( $form_entries[ $entry_index - 1 ] ) ) {
+		$prev_entry     = $form_entries[ $entry_index - 1 ];
+		$prev_entry_url = admin_url( sprintf( 'admin.php?page=evf-entries&amp;form_id=%d&amp;view-entry=%d', $form_id, $prev_entry ) );
+	}
+
+	if ( isset( $form_entries[ $entry_index + 1 ] ) ) {
+		$next_entry     = $form_entries[ $entry_index + 1 ];
+		$next_entry_url = admin_url( sprintf( 'admin.php?page=evf-entries&amp;form_id=%d&amp;view-entry=%d', $form_id, $next_entry ) );
+	}
+
+	$next_entry = isset( $form_entries[ $entry_index + 1 ] ) ? $form_entries[ $entry_index + 1 ] : '';
+}
+
 ?>
 <div class="wrap everest-forms">
 	<h1 class="wp-heading-inline"><?php esc_html_e( 'View Entry', 'everest-forms' ); ?></h1>
@@ -32,6 +60,14 @@ $trash_link = wp_nonce_url(
 		<div id="poststuff">
 			<div id="post-body" class="metabox-holder columns-2">
 				<!-- Entry Fields metabox -->
+				<div id="evf-entry-nav-buttons">
+					<a class="button" id="evf-prev-entry-button" href="<?php echo esc_url( $prev_entry_url ); ?>" <?php echo empty( $prev_entry ) ? esc_attr( 'disabled=disabled' ) : ''; ?> >
+						<?php esc_html_e( 'Previous', 'everest-forms' ); ?>
+					</a>
+					<a class="button" id="evf-next-entry-button" href="<?php echo esc_url( $next_entry_url ); ?>" <?php echo empty( $next_entry ) ? esc_attr( 'disabled=disabled' ) : ''; ?> >
+						<?php esc_html_e( 'Next', 'everest-forms' ); ?>
+					</a>
+				</div>
 				<div id="post-body-content" style="position: relative;">
 					<div id="everest-forms-entry-fields" class="stuffbox">
 						<h2 class="hndle">
@@ -126,17 +162,16 @@ $trash_link = wp_nonce_url(
 												} else {
 													echo nl2br( make_clickable( $field_label ) ); // @codingStandardsIgnoreLine
 												}
-											} else {
-												if ( $correct_answers && false !== $correct_answers ) {
-													if ( in_array( $field_value, $correct_answers, true ) ) {
-														$answer_class = 'correct_answer';
-													} else {
-														$answer_class = 'wrong_answer';
-													}
-													echo '<span class="list ' . esc_attr( $answer_class ) . '">' . esc_html( wp_strip_all_tags( $field_value ) ) . '</span>';
+											} elseif ( $correct_answers && false !== $correct_answers ) {
+												if ( in_array( $field_value, $correct_answers, true ) ) {
+													$answer_class = 'correct_answer';
 												} else {
-													echo nl2br( make_clickable( $field_value ) ); // @codingStandardsIgnoreLine
+													$answer_class = 'wrong_answer';
 												}
+													echo '<span class="list ' . esc_attr( $answer_class ) . '">' . esc_html( wp_strip_all_tags( $field_value ) ) . '</span>';
+											} else {
+												echo nl2br( make_clickable( $field_value ) ); // @codingStandardsIgnoreLine
+
 											}
 										} else {
 											esc_html_e( 'Empty', 'everest-forms' );
@@ -215,7 +250,12 @@ $trash_link = wp_nonce_url(
 										</p>
 									<?php endif; ?>
 
-									<?php if ( apply_filters( 'everest_forms_entry_details_sidebar_details_status', false, $entry, $form_data ) ) : ?>
+									<?php
+									if ( ! empty( $entry->status ) ) :
+										{
+
+										}
+										?>
 										<p class="everest-forms-entry-status">
 											<span class="dashicons dashicons-category"></span>
 											<?php esc_html_e( 'Status:', 'everest-forms' ); ?>

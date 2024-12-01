@@ -28,7 +28,6 @@ class EVF_Forms_Features {
 	 */
 	public function form_fields( $fields ) {
 		$pro_fields = array(
-			'EVF_Field_File_Upload',
 			'EVF_Field_Image_Upload',
 			'EVF_Field_Hidden',
 			'EVF_Field_Phone',
@@ -52,13 +51,17 @@ class EVF_Forms_Features {
 			'EVF_Field_Payment_Total',
 			'EVF_Field_Payment_Subtotal',
 			'EVF_Field_Payment_Coupon',
+			'EVF_Field_Payment_Square',
 			'EVF_Field_Credit_Card',
+			'EVF_Field_Payment_Authorize_Net',
 			'EVF_Field_Rating',
 			'EVF_Field_Likert',
 			'EVF_Field_Scale_Rating',
 			'EVF_Field_Yes_No',
 			'EVF_Field_Color',
 			'EVF_Field_Reset',
+			'EVF_Field_Lookup',
+
 		);
 
 		return array_merge( $fields, $pro_fields );

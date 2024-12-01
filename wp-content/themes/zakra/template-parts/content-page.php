@@ -7,8 +7,11 @@
  * @package zakra
  */
 
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
 $content_orders = get_theme_mod(
-	'zakra_page_content_structure',
+	'zakra_page_content_elements',
 	array(
 		'title',
 		'featured_image',
@@ -20,40 +23,27 @@ $content_orders = get_theme_mod(
 <article id="post-<?php the_ID(); ?>" <?php post_class(); ?>>
 
 	<?php
-	foreach ( $content_orders as $key => $content_order ) :
+	foreach ( $content_orders as $key => $content_order ) {
 
-		if ( 'title' === $content_order ) :
+		if ( 'title' === $content_order ) {
 
-			if ( 'page-header' !== zakra_is_page_title_enabled() ) : ?>
-				<header class="entry-header">
-					<h1 class="entry-title tg-page-content__title">
-						<?php echo wp_kses_post( zakra_get_title() ); ?>
-					</h1>
-				</header><!-- .entry-header -->
-			<?php endif;
-		elseif ( 'featured_image' === $content_order ) :
-			zakra_post_thumbnail();
-		elseif ( 'content' === $content_order ) :
-			?>
-			<div class="entry-content">
-				<?php
-				the_content();
+			get_template_part( 'template-parts/entry/entry', 'header' );
+		}
 
-				wp_link_pages(
-					array(
-						'before' => '<div class="page-links">' . esc_html__( 'Pages:', 'zakra' ),
-						'after'  => '</div>',
-					)
-				);
-				?>
-			</div><!-- .entry-content -->
-			<?php
-		endif;
-	endforeach;
+		elseif ( 'featured_image' === $content_order ) {
+
+			get_template_part( 'template-parts/entry/entry', 'thumbnail' );
+		}
+
+		elseif ( 'content' === $content_order ) {
+
+			get_template_part( 'template-parts/entry/entry', 'content' );
+		}
+	}
 
 	if ( get_edit_post_link() ) :
 		?>
-		<footer class="entry-footer">
+		<footer class="zak-entry-footer">
 			<?php
 			edit_post_link(
 				sprintf(
@@ -72,7 +62,7 @@ $content_orders = get_theme_mod(
 				'</span>'
 			);
 			?>
-		</footer><!-- .entry-footer -->
+		</footer><!-- .zak-entry-footer -->
 		<?php
 	endif;
 	?>

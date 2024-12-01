@@ -9,12 +9,21 @@
 
 ?>
 
-<section class="no-results not-found">
+<section class="zak-no-results zak-not-found">
 	<header class="page-header">
-		<?php if ( 'page-header' !== zakra_is_page_title_enabled() ) : ?>
-			<h1 class="page-title tg-page-content__title"><?php esc_html_e( 'Nothing Found', 'zakra' ); ?></h1>
+		<?php if ( 'page-header' !== zakra_page_title_position() ) : ?>
+			<h1 class="page-title zak-page-content__title"><?php esc_html_e( 'Nothing Found', 'zakra' ); ?></h1>
 		<?php endif; ?>
 	</header><!-- .page-header -->
+
+	<img
+		src="<?php echo esc_url( get_template_directory_uri() . '/assets/img/Website.svg' ); ?>"
+		alt=""
+	/>
+
+	<header class="zak-content-header">
+		<h1 class="zak-page-title"><?php esc_html_e( 'No Results Found', 'zakra' ); ?></h1>
+	</header><!-- .cm-page-header -->
 
 	<div class="page-content">
 		<?php
@@ -36,7 +45,7 @@
 		elseif ( is_search() ) :
 			?>
 
-			<p><?php esc_html_e( 'Sorry, but nothing matched your search terms. Please try again with some different keywords.', 'zakra' ); ?></p>
+			<p><?php esc_html_e( 'We couldnt find any results for your search. Use more generic words or double check your spelling.', 'zakra' ); ?></p>
 			<?php
 			get_search_form();
 
@@ -50,4 +59,4 @@
 		endif;
 		?>
 	</div><!-- .page-content -->
-</section><!-- .no-results -->
+</section><!-- .zak-no-results -->

@@ -45,8 +45,8 @@ jQuery(
 				frame.on(
 					'select',
 					function () {
-						var imgContainer = self.parents( '.zakra-ui-field' ).find( '.tg-upload-img' ),
-						    input        = self.parents( '.zakra-ui-field' ).find( '.tg-upload-input' ),
+						var imgContainer = self.parents( '.zakra-ui-field' ).find( '.zak-upload-img' ),
+						    input        = self.parents( '.zakra-ui-field' ).find( '.zak-upload-input' ),
 						    attachment   = frame.state().get( 'selection' ).first().toJSON(),
 						    delLink      = self.siblings( '.delete-custom-img' ),
 						    uploadLink   = self;
@@ -72,8 +72,8 @@ jQuery(
 
 				event.preventDefault();
 
-				var imgContainer = $( this ).parents( '.zakra-ui-field' ).find( '.tg-upload-img' ),
-				    input        = $( this ).parents( '.zakra-ui-field' ).find( '.tg-upload-input' ),
+				var imgContainer = $( this ).parents( '.zakra-ui-field' ).find( '.zak-upload-img' ),
+				    input        = $( this ).parents( '.zakra-ui-field' ).find( '.zak-upload-input' ),
 				    delLink      = $( this ),
 				    uploadLink   = $( this ).siblings( '.upload-custom-img' );
 
@@ -94,10 +94,10 @@ jQuery(
 		 * Color Picker.
 		 */
 		function initColorPicker( metabox ) {
-			metabox.find( '.tg-color-picker' ).wpColorPicker();
+			metabox.find( '.zak-color-picker' ).wpColorPicker();
 		}
 
-		$( '#page-settings-tabs-wrapper:has(.tg-color-picker)' ).each(
+		$( '#page-settings-tabs-wrapper:has(.zak-color-picker)' ).each(
 			function () {
 				initColorPicker( $( this ) );
 			}
@@ -117,10 +117,10 @@ jQuery(
 					$customizer_val = $( this ).parents( '.options-group' ).data( 'customizer' );
 
 					// If Button in meta or customizer.
-					if ( 'button' === $meta_val || ( 'customizer' === $meta_val && 'button' === $customizer_val ) ) {
+					if ( 'layout-2' === $meta_val || ( 'customizer' === $meta_val && 'layout-2' === $customizer_val ) ) {
 						$( this ).parents( '.options-group' ).siblings( '.show-default' ).fadeIn( 100 ).fadeOut( 100 );
 						$( this ).parents( '.options-group' ).siblings( '.show-button' ).fadeOut( 100 ).fadeIn( 100 );
-					} else if ( 'default' === $meta_val || ( 'customizer' === $meta_val && 'default' === $customizer_val ) ) { // If Default in meta or customizer.
+					} else if ( 'layout-1' === $meta_val || ( 'customizer' === $meta_val && 'layout-1' === $customizer_val ) ) { // If Default in meta or customizer.
 						$( this ).parents( '.options-group' ).siblings( '.show-default' ).fadeOut( 100 ).fadeIn( 100 );
 						$( this ).parents( '.options-group' ).siblings( '.show-button' ).fadeIn( 100 ).fadeOut( 100 );
 					}

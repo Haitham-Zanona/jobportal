@@ -1,14 +1,19 @@
 <?php
 /**
- * The header for our theme
+ * The header for Zakra theme
  *
- * This is the template that displays all of the <head> section and everything up until <div id="content">
+ * This is the template that displays all the <head> section and everything up until <div id="content">
  *
  * @link    https://developer.wordpress.org/themes/basics/template-files/#template-partials
  *
  * @package zakra
  */
 
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+?>
+
+<?php
 /**
  * Functions hooked into zakra_action_doctype action
  *
@@ -45,6 +50,7 @@ do_action( 'zakra_action_doctype' );
  * @since Zakra 1.2.3
  */
 if ( function_exists( 'wp_body_open' ) ) {
+
 	wp_body_open();
 }
 ?>
@@ -59,80 +65,13 @@ if ( function_exists( 'wp_body_open' ) ) {
 do_action( 'zakra_action_before' );
 ?>
 
-<?php
-/**
- * Hook - zakra_action_before_header
- *
- * @hooked zakra_header_start - 10
- */
-do_action( 'zakra_action_before_header' );
-?>
-
-<?php
-/**
- * Hook - zakra_before_header_top
- */
-do_action( 'zakra_before_header_top' );
-?>
-
-<?php
-/**
- * Hook - zakra_action_header_top
- *
- * @hooked zakra_header_top - 10
- */
-do_action( 'zakra_action_header_top' );
-?>
-
-<?php
-/**
- * Hook - zakra_after_header_top
- */
-do_action( 'zakra_after_header_top' );
-?>
-
-<?php
-/**
- * Hook - zakra_action_before_header_main
- *
- * @hooked zakra_before_header_main - 10
- */
-do_action( 'zakra_action_before_header_main' );
-?>
-
-<?php
-/**
- * Hook - zakra_action_header_main
- *
- * @hooked zakra_header_main() - 10
- */
-do_action( 'zakra_action_header_main' );
-?>
-
-<?php
-/**
- * Hook - zakra_action_after_header_main
- *
- * @hooked zakra_header - 10
- */
-do_action( 'zakra_action_after_header_main' );
-?>
-
-<?php
-/**
- * Hook - zakra_action_after_header
- *
- * @hooked zakra_header_end - 10
- */
-do_action( 'zakra_action_after_header' );
-?>
+<?php zakra_header(); ?>
 
 <?php
 /**
  * Hook - zakra_action_before_content.
  *
  * @hooked zakra_main_start - 10
- * @hooked zakra_page_header - 15
  * @hooked zakra_content_start - 20
  */
 do_action( 'zakra_action_before_content' );

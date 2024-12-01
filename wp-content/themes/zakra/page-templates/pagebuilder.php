@@ -18,7 +18,7 @@
 get_header();
 ?>
 
-	<div id="primary" class="content-area pagebuilder-content">
+	<div id="primary" class="zak-primary pagebuilder-content">
 
 		<?php
 		while ( have_posts() ) :
@@ -27,7 +27,7 @@ get_header();
 		endwhile; // End of the loop.
 		?>
 
-	</div><!-- #primary -->
+	</div><!-- zak-primary -->
 
 <?php
 get_footer();

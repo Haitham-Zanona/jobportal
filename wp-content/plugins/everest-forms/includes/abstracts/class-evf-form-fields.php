@@ -21,11 +21,25 @@ abstract class EVF_Form_Fields {
 	public $name;
 
 	/**
+	 * Field links.
+	 *
+	 * @var string
+	 */
+	public $links;
+
+	/**
 	 * Field type.
 	 *
 	 * @var string
 	 */
 	public $type;
+
+	/**
+	 * Field Order.
+	 *
+	 * @var string
+	 */
+	public $order;
 
 	/**
 	 * Field icon.
@@ -40,6 +54,20 @@ abstract class EVF_Form_Fields {
 	 * @var string
 	 */
 	public $class = '';
+
+	/**
+	 * Field addon.
+	 *
+	 * @var string
+	 */
+	public $addon;
+
+	/**
+	 * Field plan.
+	 *
+	 * @var string
+	 */
+	public $plan;
 
 	/**
 	 * Form ID.
@@ -87,7 +115,8 @@ abstract class EVF_Form_Fields {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->class   = $this->is_pro ? 'upgrade-modal' : $this->class;
+		$get_license   = evf_get_license_plan();
+		$this->class   = $this->is_pro ? ( false === $get_license ? 'upgrade-modal' : 'evf-upgrade-addon' ) : $this->class;
 		$this->form_id = isset( $_GET['form_id'] ) ? absint( $_GET['form_id'] ) : false; // phpcs:ignore WordPress.Security.NonceVerification
 
 		// Init hooks.
@@ -299,11 +328,17 @@ abstract class EVF_Form_Fields {
 			// Toggle.
 			case 'toggle':
 				$checked = checked( '1', $args['value'], false );
-				$icon    = $args['value'] ? 'fa-toggle-on' : 'fa-toggle-off';
-				$cls     = $args['value'] ? 'everest-forms-on' : 'everest-forms-off';
-				$status  = $args['value'] ? __( 'On', 'everest-forms' ) : __( 'Off', 'everest-forms' );
-				$output  = sprintf( '<span class="everest-forms-toggle-icon %s"><i class="fa %s" aria-hidden="true"></i> <span class="everest-forms-toggle-icon-label">%s</span>', $cls, $icon, $status );
-				$output .= sprintf( '<input type="checkbox" class="widefat %s" id="everest-forms-field-option-%s-%s" name="form_fields[%s][%s]" value="1" %s %s></span>', $class, $id, $slug, $id, $slug, $checked, $data );
+				$output .= sprintf( '<div class="evf-toggle-section">' );
+				$output .= sprintf( '<span class="everest-forms-toggle-form">' );
+				$output .= sprintf( '<input type="checkbox" class="widefat %s" id="everest-forms-field-option-%s-%s" name="form_fields[%s][%s]" value="1" %s %s>', $class, $id, $slug, $id, $slug, $checked, $data );
+				$output .= sprintf( '<span class="slider round"></span>' );
+				$output .= sprintf( '</span>' );
+				$output .= sprintf( '<label for="everest-forms-field-option-%s-%s" class="inline">%s', $id, $slug, $args['desc'] );
+				if ( isset( $args['tooltip'] ) && ! empty( $args['tooltip'] ) ) {
+					$output .= ' ' . sprintf( '<i class="dashicons dashicons-editor-help everest-forms-help-tooltip" title="%s"></i>', esc_attr( $args['tooltip'] ) );
+				}
+				$output .= '</label>';
+				$output .= sprintf( '</div>' );
 				break;
 
 			// Select.
@@ -393,20 +428,18 @@ abstract class EVF_Form_Fields {
 			case 'basic-options':
 				if ( 'open' === $markup ) {
 					if ( $echo ) {
-						echo sprintf( '<div class="everest-forms-field-option-group everest-forms-field-option-group-basic open" id="everest-forms-field-option-basic-%s">', esc_attr( $field['id'] ) );
-						echo sprintf( '<a href="#" class="everest-forms-field-option-group-toggle">%s<span> (ID #%s)</span> <i class="handlediv"></i></a>', esc_html( $this->name ), esc_html( $field['id'] ) );
-						echo sprintf( '<div class="everest-forms-field-option-group-inner %s">', esc_attr( $class ) );
+						printf( '<div class="everest-forms-field-option-group everest-forms-field-option-group-basic open" id="everest-forms-field-option-basic-%s">', esc_attr( $field['id'] ) );
+						printf( '<a href="#" class="everest-forms-field-option-group-toggle">%s<span> (ID #%s)</span> <i class="handlediv"></i></a>', esc_html( $this->name ), esc_html( $field['id'] ) );
+						printf( '<div class="everest-forms-field-option-group-inner %s">', esc_attr( $class ) );
 					} else {
 						$output  = sprintf( '<div class="everest-forms-field-option-group everest-forms-field-option-group-basic open" id="everest-forms-field-option-basic-%s">', $field['id'] );
 						$output .= sprintf( '<a href="#" class="everest-forms-field-option-group-toggle">%s<span> (ID #%s)</span> <i class="handlediv"></i></a>', $this->name, $field['id'] );
 						$output .= sprintf( '<div class="everest-forms-field-option-group-inner %s">', $class );
 					}
-				} else {
-					if ( $echo ) {
+				} elseif ( $echo ) {
 						echo '</div></div>';
-					} else {
-						$output = '</div></div>';
-					}
+				} else {
+					$output = '</div></div>';
 				}
 				break;
 
@@ -527,7 +560,7 @@ abstract class EVF_Form_Fields {
 				$value   = isset( $field['required'] ) ? $field['required'] : $default;
 				$tooltip = esc_html__( 'Check this option to mark the field required. A form will not submit unless all required fields are provided.', 'everest-forms' );
 				$output  = $this->field_element(
-					'checkbox',
+					'toggle',
 					$field,
 					array(
 						'slug'    => 'required',
@@ -780,7 +813,7 @@ abstract class EVF_Form_Fields {
 					false
 				);
 				$readonly       = $this->field_element(
-					'checkbox',
+					'toggle',
 					$field,
 					array(
 						'slug'  => 'readonly_field_visibility',
@@ -791,7 +824,7 @@ abstract class EVF_Form_Fields {
 					false
 				);
 				$hidden         = $this->field_element(
-					'checkbox',
+					'toggle',
 					$field,
 					array(
 						'slug'  => 'hidden_field_visibility',
@@ -820,7 +853,7 @@ abstract class EVF_Form_Fields {
 				$value   = ! empty( $field['no_duplicates'] ) ? esc_attr( $field['no_duplicates'] ) : '';
 				$tooltip = esc_html__( 'Select this option to limit user input to unique values only. This will require that a value entered in a field does not currently exist in the entry database for that field..', 'everest-forms' );
 				$output  = $this->field_element(
-					'checkbox',
+					'toggle',
 					$field,
 					array(
 						'slug'    => 'no_duplicates',
@@ -884,7 +917,7 @@ abstract class EVF_Form_Fields {
 				$default           = ! empty( $args['default'] ) ? $args['default'] : '0';
 				$value             = ! empty( $field['show_tooltip'] ) ? esc_attr( $field['show_tooltip'] ) : '';
 				$output            = $this->field_element(
-					'checkbox',
+					'toggle',
 					$field,
 					array(
 						'slug'    => 'show_tooltip',
@@ -936,7 +969,7 @@ abstract class EVF_Form_Fields {
 				$value   = ! empty( $field['autocomplete_address'] ) ? esc_attr( $field['autocomplete_address'] ) : '';
 				$tooltip = esc_html__( 'Check this option to autofill address field.', 'everest-forms' );
 				$output  = $this->field_element(
-					'checkbox',
+					'toggle',
 					$field,
 					array(
 						'slug'    => 'autocomplete_address',
@@ -1179,7 +1212,7 @@ abstract class EVF_Form_Fields {
 				);
 
 				$field_content .= $this->field_element(
-					'checkbox',
+					'toggle',
 					$field,
 					array(
 						'slug'    => 'choices_images',
@@ -1423,20 +1456,18 @@ abstract class EVF_Form_Fields {
 					$override = apply_filters( 'everest_forms_advanced_options_override', false );
 					$override = ! empty( $override ) ? 'style="display:' . $override . ';"' : '';
 					if ( $echo ) {
-						echo sprintf( '<div class="everest-forms-field-option-group everest-forms-field-option-group-advanced everest-forms-hide closed" id="everest-forms-field-option-advanced-%s" %s>', esc_attr( $field['id'] ), ( ! empty( $override ) ? 'style="display:' . esc_attr( apply_filters( 'everest_forms_advanced_options_override', false ) ) . ';"' : '' ) );
-						echo sprintf( '<a href="#" class="everest-forms-field-option-group-toggle">%s<i class="handlediv"></i></a>', esc_html__( 'Advanced Options', 'everest-forms' ) );
+						printf( '<div class="everest-forms-field-option-group everest-forms-field-option-group-advanced everest-forms-hide closed" id="everest-forms-field-option-advanced-%s" %s>', esc_attr( $field['id'] ), ( ! empty( $override ) ? 'style="display:' . esc_attr( apply_filters( 'everest_forms_advanced_options_override', false ) ) . ';"' : '' ) );
+						printf( '<a href="#" class="everest-forms-field-option-group-toggle">%s<i class="handlediv"></i></a>', esc_html__( 'Advanced Options', 'everest-forms' ) );
 						echo '<div class="everest-forms-field-option-group-inner">';
 					} else {
 						$output  = sprintf( '<div class="everest-forms-field-option-group everest-forms-field-option-group-advanced everest-forms-hide closed" id="everest-forms-field-option-advanced-%s" %s>', $field['id'], $override );
 						$output .= sprintf( '<a href="#" class="everest-forms-field-option-group-toggle">%s<i class="handlediv"></i></a>', __( 'Advanced Options', 'everest-forms' ) );
 						$output .= '<div class="everest-forms-field-option-group-inner">';
 					}
-				} else {
-					if ( $echo ) {
+				} elseif ( $echo ) {
 						echo '</div></div>';
-					} else {
-						$output = '</div></div>';
-					}
+				} else {
+					$output = '</div></div>';
 				}
 
 				break;
@@ -1481,7 +1512,7 @@ abstract class EVF_Form_Fields {
 				$value   = ! empty( $field['enable_prepopulate'] ) ? esc_attr( $field['enable_prepopulate'] ) : '';
 				$tooltip = esc_html__( 'Enable this option to allow field to be populated dynamically', 'everest-forms' );
 				$output  = $this->field_element(
-					'checkbox',
+					'toggle',
 					$field,
 					array(
 						'slug'    => 'enable_prepopulate',
@@ -1539,6 +1570,121 @@ abstract class EVF_Form_Fields {
 					);
 				break;
 
+			/**
+			 * Regex Validation
+			 */
+			case 'regex_validation':
+				$default = ! empty( $args['default'] ) ? $args['default'] : '0';
+				$value   = ! empty( $field['enable_regex_validation'] ) ? esc_attr( $field['enable_regex_validation'] ) : '';
+				$tooltip = esc_html__( 'Enable this option to allow regex validation for this field.', 'everest-forms' );
+				$output  = $this->field_element(
+					'toggle',
+					$field,
+					array(
+						'slug'    => 'enable_regex_validation',
+						'value'   => $value,
+						'desc'    => esc_html__( 'Enable Regex Validation ', 'everest-forms' ),
+						'tooltip' => $tooltip,
+					),
+					false
+				);
+				$output  = $this->field_element(
+					'row',
+					$field,
+					array(
+						'slug'    => 'enable_regex_validation',
+						'content' => $output,
+					),
+					$echo
+				);
+				break;
+
+			case 'regex_value':
+				$toggle  = '';
+				$tooltip = esc_html__( 'Regular expression value is checked against.', 'everest-forms' );
+				$value   = ! empty( $field['regex_value'] ) ? esc_attr( $field['regex_value'] ) : '';
+
+				// Build output.
+				$output  = $this->field_element(
+					'label',
+					$field,
+					array(
+						'slug'          => 'regex_value',
+						'value'         => esc_html__( 'Regex Value', 'everest-forms' ),
+						'tooltip'       => $tooltip,
+						'after_tooltip' => $toggle,
+					),
+					false
+				);
+				$output .= $this->field_element(
+					'text',
+					$field,
+					array(
+						'slug'  => 'regex_value',
+						'value' => $value,
+					),
+					false
+				);
+				// Smart tag for default value.
+				$include_fields = array( 'email', 'first-name', 'last-name', 'number', 'text', 'url' );
+
+				if ( in_array( $field['type'], $include_fields, true ) ) {
+					$output .= '<a href="#" class="evf-toggle-smart-tag-display" data-type="regex"><span class="dashicons dashicons-editor-code"></span></a>';
+					$output .= '<div class="evf-smart-tag-lists" style="display: none">';
+					$output .= '<div class="smart-tag-title other-tag-title">Regular Expression</div><ul class="evf-regex"></ul></div>';
+				}
+
+				$output = $this->field_element(
+					'row',
+					$field,
+					array(
+						'slug'    => 'regex_value',
+						'content' => $output,
+						'class'   => ! in_array( $field['type'], $include_fields, true ) && isset( $field['enable_regex_validation'] ) ? '' : ' hidden evf_smart_tag',
+					),
+					$echo
+				);
+
+				break;
+
+			case 'regex_message':
+				$toggle  = '';
+				$tooltip = esc_html__( 'if the regular expression value does not match it will show this message.', 'everest-forms' );
+				$value   = ! empty( $field['regex_message'] ) ? esc_attr( $field['regex_message'] ) : 'Please provide a valid value for this field.';
+
+				// Build output.
+				$output  = $this->field_element(
+					'label',
+					$field,
+					array(
+						'slug'          => 'regex_message',
+						'value'         => esc_html__( 'Validation Message for Regular expression', 'everest-forms' ),
+						'tooltip'       => $tooltip,
+						'after_tooltip' => $toggle,
+					),
+					false
+				);
+				$output .= $this->field_element(
+					'text',
+					$field,
+					array(
+						'slug'  => 'regex_message',
+						'value' => $value,
+					),
+					false
+				);
+				$output  = $this->field_element(
+					'row',
+					$field,
+					array(
+						'slug'    => 'regex_message',
+						'content' => $output,
+						'class'   => isset( $field['enable_regex_validation'] ) ? '' : 'hidden',
+					),
+					$echo
+				);
+				break;
+
 			/*
 			 * CSS classes.
 			 */
@@ -1588,7 +1734,7 @@ abstract class EVF_Form_Fields {
 
 				// Build output.
 				$output = $this->field_element(
-					'checkbox',
+					'toggle',
 					$field,
 					array(
 						'slug'    => 'label_hide',
@@ -1618,7 +1764,7 @@ abstract class EVF_Form_Fields {
 
 				// Build output.
 				$output = $this->field_element(
-					'checkbox',
+					'toggle',
 					$field,
 					array(
 						'slug'    => 'sublabel_hide',
@@ -1757,7 +1903,7 @@ abstract class EVF_Form_Fields {
 							array(
 								'slug'        => 'denied_domains',
 								'value'       => esc_attr( $denied_domains ),
-								'placeholder' => esc_attr__( 'Denied Domain(s)', 'everest-forms' )
+								'placeholder' => esc_attr__( 'Denied Domain(s)', 'everest-forms' ),
 							),
 							false
 						),
@@ -1774,7 +1920,7 @@ abstract class EVF_Form_Fields {
 				$tooltip = esc_html__( 'Check this option to hide the form field label.', 'everest-forms' );
 
 				$output = $this->field_element(
-					'checkbox',
+					'toggle',
 					$field,
 					array(
 						'slug'    => 'select_all',
@@ -1794,6 +1940,89 @@ abstract class EVF_Form_Fields {
 					),
 					$echo
 				);
+				break;
+			case 'google_calendar_for_appt_sched_option':
+				$appt_sched_enable_google_calendar_toggle       = '<div class="everest-forms-border-container everest-forms-appt-sched-google-calendar-advanced">';
+				$appt_sched_enable_google_calendar_toggle      .= '<h4 class="everest-forms-border-container-title">' . esc_html__( 'Appointment Scheduling', 'everest-forms' ) . '</h4>'; // phpcs:ignore WordPress.Security.NonceVerification
+				$appt_sched_enable_google_calendar_toggle_value = isset( $field['appt_sched_enable_google_calendar_advanced'] ) ? $field['appt_sched_enable_google_calendar_advanced'] : false;
+				$appt_sched_enable_google_calendar_toggle      .= '<div class="input-group-col-2">';
+				$appt_sched_enable_google_calendar_toggle      .= $this->field_element(
+					'toggle',
+					$field,
+					array(
+						'slug'    => 'appt_sched_enable_google_calendar_advanced',
+						'desc'    => esc_html__( 'Enable Google Calendar', 'everest-forms' ),
+						'value'   => $appt_sched_enable_google_calendar_toggle_value,
+						'tooltip' => esc_html__( 'Enable to integrate google calendar events for appointment scheduling.', 'everest-forms' ),
+						'class'   => 'appt-sched-google-calendar-advanced',
+						'default' => false,
+						'data'    => array(
+							'feature' => esc_html__( 'Google Calendar', 'everest-forms' ),
+						),
+					),
+					false
+				);
+				$appt_sched_enable_google_calendar_toggle      .= '</div>';
+
+				// Goole Calendar Section.
+				$form_id                  = isset( $_GET['form_id'] ) ? sanitize_text_field( wp_unslash( $_GET['form_id'] ) ) : '';
+				$is_google_section_hidden = ! evf_string_to_bool( $appt_sched_enable_google_calendar_toggle_value ) ? 'everest-forms-hidden' : '';
+
+				$appt_sched_google_calendar_title_field_title  = '<div class="everest-form-appt-sched-google-event-section ' . $is_google_section_hidden . '">';
+				$appt_sched_google_calendar_title_field_title .= $this->field_element(
+					'label',
+					$field,
+					array(
+						'slug'    => 'appt_sched_google_calendar_title_field_title',
+						'value'   => esc_html__( 'Event Title', 'everest-forms' ),
+						'tooltip' => esc_html__( 'Choose the field whose value you want to sync as the event title.', 'everest-forms' ),
+					),
+					false
+				);
+				$appt_sched_google_calendar_event_title_field  = $this->field_element(
+					'select',
+					$field,
+					array(
+						'slug'    => 'appt_sched_google_calendar_event_title_field',
+						'desc'    => esc_html__( 'Event Title', 'everest-forms' ),
+						'value'   => isset( $field['appt_sched_google_calendar_event_title_field'] ) ? $field['appt_sched_google_calendar_event_title_field'] : '',
+						'tooltip' => esc_html__( 'Choose the field whose value you want to sync as the event description.', 'everest-forms' ),
+						'class'   => 'appt-sched-google-calendar-event-title-field ',
+						'default' => '',
+						'options' => EVF_Field_Date_Time::get_form_fields( $form_id ),
+					),
+					false
+				);
+				$appt_sched_google_calendar_title_field_desc   = $this->field_element(
+					'label',
+					$field,
+					array(
+						'slug'    => 'appt_sched_google_calendar_title_field_title',
+						'value'   => esc_html__( 'Event Description', 'everest-forms' ),
+						'tooltip' => esc_html__( 'Choose field to sync value of it as the event description.', 'everest-forms' ),
+					),
+					false
+				);
+				$appt_sched_google_calendar_event_desc_field   = $this->field_element(
+					'select',
+					$field,
+					array(
+						'slug'    => 'appt_sched_google_calendar_event_desc_field',
+						'desc'    => esc_html__( 'Choose Field Sync as Event Title', 'everest-forms' ),
+						'value'   => isset( $field['appt_sched_google_calendar_event_desc_field'] ) ? $field['appt_sched_google_calendar_event_desc_field'] : '',
+						'tooltip' => esc_html__( 'Choose field to sync value of it as the event description.', 'everest-forms' ),
+						'class'   => 'appt-sched-google-calendar-event-desc-field',
+						'default' => '',
+						'options' => EVF_Field_Date_Time::get_form_fields( $form_id ),
+					),
+					false
+				);
+				$appt_sched_google_calendar_event_desc_field  .= '</div></div>';
+				$args = array(
+					'slug'    => 'appt_sched_enable_google_calendar_advanced_setting',
+					'content' => $appt_sched_enable_google_calendar_toggle . $appt_sched_google_calendar_title_field_title . $appt_sched_google_calendar_event_title_field . $appt_sched_google_calendar_title_field_desc . $appt_sched_google_calendar_event_desc_field,
+				);
+				$this->field_element( 'row', $field, $args, $echo );
 				break;
 
 			/*
@@ -1849,7 +2078,7 @@ abstract class EVF_Form_Fields {
 			case 'label':
 				$label = isset( $field['label'] ) && ! empty( $field['label'] ) ? $field['label'] : '';
 				if ( $echo ) {
-					echo sprintf( '<label class="label-title %s"><span class="text">%s</span><span class="required">%s</span></label>', esc_attr( $class ), esc_html( $label ), esc_html( apply_filters( 'everest_form_get_required_type', '*', $field, $form_data ) ) );
+					printf( '<label class="label-title %s"><span class="text">%s</span><span class="required">%s</span></label>', esc_attr( $class ), esc_html( $label ), esc_html( apply_filters( 'everest_form_get_required_type', '*', $field, $form_data ) ) );
 				} else {
 					$output = sprintf( '<label class="label-title %s"><span class="text">%s</span><span class="required">%s</span></label>', $class, $label, apply_filters( 'everest_form_get_required_type', '*', $field, $form_data ) );
 				}
@@ -1859,7 +2088,7 @@ abstract class EVF_Form_Fields {
 				$description = isset( $field['description'] ) && ! empty( $field['description'] ) ? $field['description'] : '';
 				$description = false !== strpos( $class, 'nl2br' ) ? nl2br( $description ) : $description;
 				if ( $echo ) {
-					echo sprintf( '<div class="description %s">%s</div>', esc_attr( $class ), esc_html( $description ) );
+					printf( '<div class="description %s">%s</div>', esc_attr( $class ), esc_html( $description ) );
 				} else {
 					$output = sprintf( '<div class="description %s">%s</div>', $class, $description );
 				}
@@ -1868,7 +2097,7 @@ abstract class EVF_Form_Fields {
 			case 'repeater_fields':
 				$repeater_fields = isset( $field['repeater_fields'] ) && ! empty( $field['repeater_fields'] ) ? $field['repeater_fields'] : '';
 				if ( $echo ) {
-					echo sprintf( '<div>%s</div>', esc_html( $repeater_fields ) );
+					printf( '<div>%s</div>', esc_html( $repeater_fields ) );
 				} else {
 					$output = sprintf( '<div>%s</div>', $repeater_fields );
 				}
@@ -1878,7 +2107,7 @@ abstract class EVF_Form_Fields {
 				$add_new_label = isset( $field['repeater_button_add_new_label'] ) && ! empty( $field['repeater_button_add_new_label'] ) ? $field['repeater_button_add_new_label'] : 'Add';
 				$remove_label  = isset( $field['repeater_button_remove_label'] ) && ! empty( $field['repeater_button_remove_label'] ) ? $field['repeater_button_remove_label'] : 'Remove';
 				if ( $echo ) {
-					echo sprintf( '<div style="margin-right: %s" class="evf-add-row repeater_button_add_remove_label %s"><span class="everest-forms-btn everest-forms-btn-primary dashicons dashicons-plus">%s</span>&nbsp;<span class="everest-forms-btn everest-forms-btn-primary dashicons dashicons-minus">%s</span></div>', '65%', esc_attr( $class ), esc_html( $add_new_label ), esc_html( $remove_label ) );
+					printf( '<div style="margin-right: %s" class="evf-add-row repeater_button_add_remove_label %s"><span class="everest-forms-btn everest-forms-btn-primary dashicons dashicons-plus">%s</span>&nbsp;<span class="everest-forms-btn everest-forms-btn-primary dashicons dashicons-minus">%s</span></div>', '65%', esc_attr( $class ), esc_html( $add_new_label ), esc_html( $remove_label ) );
 				} else {
 					$output = sprintf( '<div style="margin-right: %s" class="evf-add-row repeater_button_add_remove_label %s"><span class="everest-forms-btn everest-forms-btn-primary dashicons dashicons-plus">%s</span>&nbsp;<span class="everest-forms-btn everest-forms-btn-primary dashicons dashicons-minus">%s</span></div>', '65%', $class, $add_new_label, $remove_label );
 				}
@@ -1931,18 +2160,18 @@ abstract class EVF_Form_Fields {
 					$placeholder = ! empty( $field['placeholder'] ) ? esc_attr( $field['placeholder'] ) : '';
 
 					if ( $echo ) {
-						echo sprintf( '<select class="%s" %s data-placeholder="%s" disabled>', esc_attr( evf_sanitize_classes( $list_class, true ) ), esc_attr( $multiple ), esc_attr( $placeholder ) );
+						printf( '<select class="%s" %s data-placeholder="%s" disabled>', esc_attr( evf_sanitize_classes( $list_class, true ) ), esc_attr( $multiple ), esc_attr( $placeholder ) );
 
 						// Optional placeholder.
 						if ( ! empty( $placeholder ) ) {
-							echo sprintf( '<option value="" class="placeholder">%s</option>', esc_html( $placeholder ) );
+							printf( '<option value="" class="placeholder">%s</option>', esc_html( $placeholder ) );
 						}
 
 						// Build the select options (even though user can only see 1st option).
 						foreach ( $values as $value ) {
 							$default  = isset( $value['default'] ) ? (bool) $value['default'] : false;
 							$selected = ! empty( $placeholder ) && empty( $multiple ) ? '' : selected( true, $default, false );
-							echo sprintf( '<option %s>%s</option>', esc_attr( $selected ), esc_html( $value['label'] ) );
+							printf( '<option %s>%s</option>', esc_attr( $selected ), esc_html( $value['label'] ) );
 						}
 
 						echo '</select>';
@@ -1963,96 +2192,90 @@ abstract class EVF_Form_Fields {
 
 						$output .= '</select>';
 					}
-				} else {
+				} elseif ( $echo ) {
 
-					if ( $echo ) {
-						echo sprintf( '<ul class="%s">', esc_attr( evf_sanitize_classes( $list_class, true ) ) );
+						printf( '<ul class="%s">', esc_attr( evf_sanitize_classes( $list_class, true ) ) );
 
 						// Individual checkbox/radio options.
-						foreach ( $values as $value ) {
-							$default     = isset( $value['default'] ) ? $value['default'] : '';
-							$selected    = checked( '1', $default, false );
-							$placeholder = wp_remote_get( evf()->plugin_url( 'assets/images/everest-forms-placeholder.png' ), array( 'sslverify' => false ) );
-							$image_src   = ! empty( $value['image'] ) ? esc_url( $value['image'] ) : $placeholder;
-							$item_class  = array();
+					foreach ( $values as $value ) {
+						$default     = isset( $value['default'] ) ? $value['default'] : '';
+						$selected    = checked( '1', $default, false );
+						$placeholder = evf()->plugin_url( 'assets/images/everest-forms-placeholder.png' );
+						$image_src   = ! empty( $value['image'] ) ? esc_url( $value['image'] ) : $placeholder;
+						$item_class  = array();
 
-							if ( ! empty( $value['default'] ) ) {
-								$item_class[] = 'everest-forms-selected';
-							}
+						if ( ! empty( $value['default'] ) ) {
+							$item_class[] = 'everest-forms-selected';
+						}
 
-							if ( $choices_images ) {
-								$item_class[] = 'everest-forms-image-choices-item';
-							}
+						if ( $choices_images ) {
+							$item_class[] = 'everest-forms-image-choices-item';
+						}
 
-							echo sprintf( '<li class="%s">', esc_attr( evf_sanitize_classes( $item_class, true ) ) );
+						printf( '<li class="%s">', esc_attr( evf_sanitize_classes( $item_class, true ) ) );
 
-							if ( $choices_images ) {
-								echo '<label>';
-								echo sprintf( '<span class="everest-forms-image-choices-image"><img src="%s" alt="%s"%s></span>', esc_url( $image_src ), esc_attr( $value['label'] ), ( ! empty( $value['label'] ) ? ' title="' . esc_attr( $value['label'] ) . '"' : '' ) );
-								echo sprintf( '<input type="%s" %s disabled>', esc_attr( $type ), esc_attr( $selected ) );
-								if ( ( 'payment-checkbox' === $field['type'] ) || ( 'payment-multiple' === $field['type'] ) ) {
-									echo '<span class="everest-forms-image-choices-label">' . esc_html( $value['label'] . '-' . evf_format_amount( evf_sanitize_amount( $value['value'] ), true ) ) . '</span>';
-								} else {
-									echo '<span class="everest-forms-image-choices-label">' . esc_html( $value['label'] ) . '</span>';
-								}
-								echo '</label>';
+						if ( $choices_images ) {
+							echo '<label>';
+							printf( '<span class="everest-forms-image-choices-image"><img src="%s" alt="%s"%s></span>', esc_url( $image_src ), esc_attr( $value['label'] ), ( ! empty( $value['label'] ) ? ' title="' . esc_attr( $value['label'] ) . '"' : '' ) );
+							printf( '<input type="%s" %s disabled>', esc_attr( $type ), esc_attr( $selected ) );
+							if ( ( 'payment-checkbox' === $field['type'] ) || ( 'payment-multiple' === $field['type'] ) ) {
+								echo '<span class="everest-forms-image-choices-label">' . esc_html( $value['label'] . '-' . evf_format_amount( evf_sanitize_amount( $value['value'] ), true ) ) . '</span>';
 							} else {
-								if ( ( 'payment-checkbox' === $field['type'] ) || ( 'payment-multiple' === $field['type'] ) ) {
-									echo sprintf( '<input type="%s" %s disabled>%s - %s', esc_attr( $type ), esc_attr( $selected ), esc_html( $value['label'] ), esc_attr( evf_format_amount( evf_sanitize_amount( $value['value'] ) ), true ) );
-								} else {
-									echo sprintf( '<input type="%s" %s disabled>%s', esc_attr( $type ), esc_attr( $selected ), esc_html( $value['label'] ) );
-								}
+								echo '<span class="everest-forms-image-choices-label">' . esc_html( $value['label'] ) . '</span>';
 							}
+							echo '</label>';
+						} elseif ( ( 'payment-checkbox' === $field['type'] ) || ( 'payment-multiple' === $field['type'] ) ) {
+								printf( '<input type="%s" %s disabled>%s - %s', esc_attr( $type ), esc_attr( $selected ), esc_html( $value['label'] ), esc_attr( evf_format_amount( evf_sanitize_amount( $value['value'] ) ), true ) );
+						} else {
+							printf( '<input type="%s" %s disabled>%s', esc_attr( $type ), esc_attr( $selected ), esc_html( $value['label'] ) );
+						}
 
 							echo '</li>';
-						}
+					}
 
 						echo '</ul>';
 
-					} else {
-						$output = sprintf( '<ul class="%s">', evf_sanitize_classes( $list_class, true ) );
+				} else {
+					$output = sprintf( '<ul class="%s">', evf_sanitize_classes( $list_class, true ) );
 
-						// Individual checkbox/radio options.
-						foreach ( $values as $value ) {
-							$default     = isset( $value['default'] ) ? $value['default'] : '';
-							$selected    = checked( '1', $default, false );
-							$placeholder = wp_remote_get( evf()->plugin_url( 'assets/images/everest-forms-placeholder.png' ), array( 'sslverify' => false ) );
-							$image_src   = ! empty( $value['image'] ) ? esc_url( $value['image'] ) : $placeholder;
-							$item_class  = array();
+					// Individual checkbox/radio options.
+					foreach ( $values as $value ) {
+						$default     = isset( $value['default'] ) ? $value['default'] : '';
+						$selected    = checked( '1', $default, false );
+						$placeholder = wp_remote_get( evf()->plugin_url( 'assets/images/everest-forms-placeholder.png' ), array( 'sslverify' => false ) );
+						$image_src   = ! empty( $value['image'] ) ? esc_url( $value['image'] ) : $placeholder;
+						$item_class  = array();
 
-							if ( ! empty( $value['default'] ) ) {
-								$item_class[] = 'everest-forms-selected';
-							}
-
-							if ( $choices_images ) {
-								$item_class[] = 'everest-forms-image-choices-item';
-							}
-
-							$output .= sprintf( '<li class="%s">', evf_sanitize_classes( $item_class, true ) );
-
-							if ( $choices_images ) {
-								$output .= '<label>';
-								$output .= sprintf( '<span class="everest-forms-image-choices-image"><img src="%s" alt="%s"%s></span>', $image_src, esc_attr( $value['label'] ), ! empty( $value['label'] ) ? ' title="' . esc_attr( $value['label'] ) . '"' : '' );
-								$output .= sprintf( '<input type="%s" %s disabled>', $type, $selected );
-								if ( ( 'payment-checkbox' === $field['type'] ) || ( 'payment-multiple' === $field['type'] ) ) {
-									$output .= '<span class="everest-forms-image-choices-label">' . wp_kses_post( $value['label'] ) . '-' . evf_format_amount( evf_sanitize_amount( $value['value'] ), true ) . '</span>';
-								} else {
-									$output .= '<span class="everest-forms-image-choices-label">' . wp_kses_post( $value['label'] ) . '</span>';
-								}
-								$output .= '</label>';
-							} else {
-								if ( ( 'payment-checkbox' === $field['type'] ) || ( 'payment-multiple' === $field['type'] ) ) {
-									$output .= sprintf( '<input type="%s" %s disabled>%s - %s', $type, $selected, $value['label'], evf_format_amount( evf_sanitize_amount( $value['value'] ), true ) );
-								} else {
-									$output .= sprintf( '<input type="%s" %s disabled>%s', $type, $selected, $value['label'] );
-								}
-							}
-
-							$output .= '</li>';
+						if ( ! empty( $value['default'] ) ) {
+							$item_class[] = 'everest-forms-selected';
 						}
 
-						$output .= '</ul>';
+						if ( $choices_images ) {
+							$item_class[] = 'everest-forms-image-choices-item';
+						}
+
+						$output .= sprintf( '<li class="%s">', evf_sanitize_classes( $item_class, true ) );
+
+						if ( $choices_images ) {
+							$output .= '<label>';
+							$output .= sprintf( '<span class="everest-forms-image-choices-image"><img src="%s" alt="%s"%s></span>', $image_src, esc_attr( $value['label'] ), ! empty( $value['label'] ) ? ' title="' . esc_attr( $value['label'] ) . '"' : '' );
+							$output .= sprintf( '<input type="%s" %s disabled>', $type, $selected );
+							if ( ( 'payment-checkbox' === $field['type'] ) || ( 'payment-multiple' === $field['type'] ) ) {
+								$output .= '<span class="everest-forms-image-choices-label">' . wp_kses_post( $value['label'] ) . '-' . evf_format_amount( evf_sanitize_amount( $value['value'] ), true ) . '</span>';
+							} else {
+								$output .= '<span class="everest-forms-image-choices-label">' . wp_kses_post( $value['label'] ) . '</span>';
+							}
+							$output .= '</label>';
+						} elseif ( ( 'payment-checkbox' === $field['type'] ) || ( 'payment-multiple' === $field['type'] ) ) {
+								$output .= sprintf( '<input type="%s" %s disabled>%s - %s', $type, $selected, $value['label'], evf_format_amount( evf_sanitize_amount( $value['value'] ), true ) );
+						} else {
+							$output .= sprintf( '<input type="%s" %s disabled>%s', $type, $selected, $value['label'] );
+						}
+
+							$output .= '</li>';
 					}
+
+					$output .= '</ul>';
 				}
 				break;
 		}
@@ -2074,6 +2297,7 @@ abstract class EVF_Form_Fields {
 	 * @since 1.0.0
 	 */
 	public function field_new() {
+
 		// Run a security check.
 		check_ajax_referer( 'everest_forms_field_drop', 'security' );
 
@@ -2090,6 +2314,11 @@ abstract class EVF_Form_Fields {
 		// Check for field type to add.
 		if ( ! isset( $_POST['field_type'] ) || empty( $_POST['field_type'] ) ) {
 			die( esc_html__( 'No field type found', 'everest-forms' ) );
+		}
+
+		$licensed = ( false === evf_get_license_plan() ) ? false : true;
+		if ( false === $licensed && 'file-upload' === $_POST['field_type'] ) {
+			update_option( 'everest_forms_one_time_draggable_field', true );
 		}
 
 		// Grab field data.
@@ -2210,17 +2439,16 @@ abstract class EVF_Form_Fields {
 
 		if ( ! empty( $field['choices'] ) && is_array( $field['choices'] ) ) {
 			$properties = $this->get_single_field_property_value_choices( $get_value, $properties, $field );
-		} else {
-			if (
+		} elseif (
 				! empty( $input ) &&
 				isset( $properties['inputs'][ $input ] )
 			) {
+
 				$properties['inputs'][ $input ]['attr']['value'] = $get_value;
 
 				// Update data attributes depending on the field type.
-				if ( isset( $field['type'] ) && 'range-slider' === $field['type'] ) {
-					$properties['inputs'][ $input ]['data']['from'] = $get_value;
-				}
+			if ( isset( $field['type'] ) && 'range-slider' === $field['type'] ) {
+				$properties['inputs'][ $input ]['data']['from'] = $get_value;
 			}
 		}
 
@@ -2373,12 +2601,28 @@ abstract class EVF_Form_Fields {
 			update_option( 'evf_validation_error', 'yes' );
 		}
 
+		// validate regex validation.
+		if ( isset( $form_data['form_fields'][ $field_id ]['enable_regex_validation'] ) && '1' === $form_data['form_fields'][ $field_id ]['enable_regex_validation'] ) {
+			$regex_value   = ! empty( $form_data['form_fields'][ $field_id ]['regex_value'] ) ? $form_data['form_fields'][ $field_id ]['regex_value'] : '';
+			$regex_message = ! empty( $form_data['form_fields'][ $field_id ]['regex_message'] ) ? $form_data['form_fields'][ $field_id ]['regex_message'] : esc_html__( 'Please provide a valid value for this field', 'everest-forms' );
+			$value         = '';
+			if ( is_array( $field_submit ) ) {
+				$value = ! empty( $field_submit['primary'] ) ? $field_submit['primary'] : '';
+			} else {
+				$value = ! empty( $field_submit ) ? $field_submit : '';
+			}
+			if ( ! preg_match( '/' . $regex_value . '/', $value ) ) {
+				evf()->task->errors[ $form_data['id'] ][ $field_id ] = $regex_message;
+				update_option( 'evf_validation_error', 'yes' );
+			}
+		}
 		// Type validations.
 		switch ( $field_type ) {
 			case 'url':
 				if ( ! empty( $_POST['everest_forms']['form_fields'][ $field_id ] ) && filter_var( $field_submit, FILTER_VALIDATE_URL ) === false ) { // phpcs:ignore WordPress.Security.NonceVerification
 					$validation_text = get_option( 'evf_' . $field_type . '_validation', esc_html__( 'Please enter a valid url', 'everest-forms' ) );
 				}
+
 				break;
 			case 'email':
 				if ( is_array( $field_submit ) ) {
@@ -2401,10 +2645,10 @@ abstract class EVF_Form_Fields {
 
 					// Limit Length.
 					if ( isset( $field['limit_enabled'], $field['limit_mode'], $field['limit_count'] ) && '1' === $field['limit_enabled'] && in_array( $field['limit_mode'], array( 'characters', 'words' ), true ) && ! empty( $field['limit_count'] ) ) {
-						if ( 'words' === $field['limit_mode'] && $field['limit_count'] < str_word_count( $field_submit ) ) {
+						if ( 'words' === $field['limit_mode'] && $field['limit_count'] < evf_word_count( $field_submit ) ) {
 							/* translators: %s Number of max words. */
 							$validation_text = sprintf( esc_html__( 'This field contains at most %s words', 'everest-forms' ), $field['limit_count'] );
-						} elseif ( 'characters' === $field['limit_mode'] && $field['limit_count'] < mb_strlen( $field_submit ) ) {
+						} elseif ( 'characters' === $field['limit_mode'] && $field['limit_count'] < mb_strlen( $field_submit ) ) { //phpcs:ignore PHPCompatibility.ParameterValues.NewIconvMbstringCharsetDefault.NotSet
 							/* translators: %s Number of max characters. */
 							$validation_text = sprintf( esc_html__( 'This field contains at most %s characters', 'everest-forms' ), $field['limit_count'] );
 						}
@@ -2412,13 +2656,45 @@ abstract class EVF_Form_Fields {
 
 					// Min Length.
 					if ( isset( $field['min_length_enabled'], $field['min_length_mode'], $field['min_length_count'] ) && '1' === $field['min_length_enabled'] && in_array( $field['min_length_mode'], array( 'characters', 'words' ), true ) && ! empty( $field['min_length_count'] ) ) {
-						if ( 'words' === $field['min_length_mode'] && $field['min_length_count'] > str_word_count( $field_submit ) ) {
+
+						if ( 'words' === $field['min_length_mode'] && $field['min_length_count'] > evf_word_count( $field_submit ) ) {
 							/* translators: %s Number of minimum words. */
 							$validation_text = sprintf( esc_html__( 'This field contains at least %s words', 'everest-forms' ), $field['min_length_count'] );
-						} elseif ( 'characters' === $field['min_length_mode'] && $field['min_length_count'] > mb_strlen( $field_submit ) ) {
+						} elseif ( 'characters' === $field['min_length_mode'] && $field['min_length_count'] > mb_strlen( $field_submit ) ) { //phpcs:ignore PHPCompatibility.ParameterValues.NewIconvMbstringCharsetDefault.NotSet
 							/* translators: %s Number of minimum characters. */
 							$validation_text = sprintf( esc_html__( 'This field contains at least %s characters', 'everest-forms' ), $field['min_length_count'] );
 						}
+					}
+				}
+
+				break;
+			case 'date-time':
+				$slot_booking = isset( $form_data['form_fields'][ $field_id ]['slot_booking_advanced'] ) ? $form_data['form_fields'][ $field_id ]['slot_booking_advanced'] : '';
+				if ( $slot_booking ) {
+					$datetime_format = isset( $form_data['form_fields'][ $field_id ]['datetime_format'] ) ? $form_data['form_fields'][ $field_id ]['datetime_format'] : '';
+					$date_format     = isset( $form_data['form_fields'][ $field_id ]['date_format'] ) ? $form_data['form_fields'][ $field_id ]['date_format'] : '';
+					$mode            = isset( $form_data['form_fields'][ $field_id ]['date_mode'] ) ? $form_data['form_fields'][ $field_id ]['date_mode'] : '';
+					$time_interval   = isset( $form_data['form_fields'][ $field_id ]['time_interval'] ) ? $form_data['form_fields'][ $field_id ]['time_interval'] : '';
+					$datetime_arr    = parse_datetime_values( $field_submit, $datetime_format, $date_format, $mode, $time_interval );
+					$booked_slot     = maybe_unserialize( get_option( 'evf_booked_slot', '' ) );
+					$form_id         = $form_data['id'];
+					$is_booked       = false;
+					if ( ! empty( $booked_slot ) && array_key_exists( $form_id, $booked_slot ) ) {
+						foreach ( $datetime_arr as $arr ) {
+
+							foreach ( $booked_slot[ $form_id ] as $slot ) {
+								if ( $arr[0] >= $slot[0] && $arr[1] <= $slot[1] ) {
+									$is_booked = true;
+									break;
+								} elseif ( $arr[0] >= $slot[0] && $arr[0] < $slot[1] && $arr[1] >= $slot[1] ) {
+									$is_booked = true;
+									break;
+								}
+							}
+						}
+					}
+					if ( $is_booked ) {
+						$validation_text = get_option( 'evf_' . $field_type . '_validation', esc_html__( 'This slot is already booked. Please choose other slot.', 'everest-forms' ) );
 					}
 				}
 				break;
@@ -2484,9 +2760,14 @@ abstract class EVF_Form_Fields {
 			case 'radio':
 			case 'signature':
 			case 'payment-multiple':
-				$value  = '';
-				$image  = ! empty( $field['value']['image'] ) ? sprintf( '<img src="%s" style="width:75px;height:75px;max-height:75px;max-width:75px;"  /><br>', $field['value']['image'] ) : '';
-				$value  = ! empty( $field['value']['label'] ) ? $image . $field['value']['label'] : '';
+				$value           = '';
+				$image           = ! empty( $field['value']['image'] ) ? sprintf( '<img src="%s" style="width:75px;height:75px;max-height:75px;max-width:75px;"  /><br>', $field['value']['image'] ) : '';
+				$filtered_choice = apply_filters( 'evf_custom_choice', false );
+				if ( $filtered_choice ) {
+					$value = ! empty( $field['value']['label'] ) ? $field['value']['label'] : '';
+				} else {
+					$value = ! empty( $field['value']['label'] ) ? $image . $field['value']['label'] : '';
+				}
 				$export = array(
 					'label' => ! empty( $field['value']['name'] ) ? $field['value']['name'] : ucfirst( str_replace( '_', ' ', $field['type'] ) ) . " - {$field['id']}",
 					'value' => ! empty( $value ) ? $value : false,
@@ -2501,7 +2782,12 @@ abstract class EVF_Form_Fields {
 						$image = ! empty( $field['value']['images'][ $key ] ) ? sprintf( '<img src="%s" style="width:75px;height:75px;max-height:75px;max-width:75px;"  /><br>', $field['value']['images'][ $key ] ) : '';
 
 						if ( ! empty( $choice ) ) {
-							$value[ $key ] = $image . $choice;
+							$filtered_choice = apply_filters( 'evf_custom_choice', false );
+							if ( $filtered_choice ) {
+								$value[ $key ] = $choice;
+							} else {
+								$value[ $key ] = $image . $choice;
+							}
 						}
 					}
 				}

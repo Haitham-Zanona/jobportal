@@ -7,7 +7,8 @@
  * @package zakra
  */
 
-$meta_style = get_theme_mod( 'zakra_blog_archive_meta_style', 'tg-meta-style-one' );
+$meta_style = get_theme_mod( 'zakra_post_meta_style', 'style-1' );
+$meta_style = 'zak-' . $meta_style;
 ?>
 
 <article id="post-<?php the_ID(); ?>" <?php post_class( $meta_style ); ?>>

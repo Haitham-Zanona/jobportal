@@ -2,7 +2,7 @@
 /**
  * The template for displaying the footer
  *
- * Contains the closing of the #content div and all content after.
+ * Contains the closing of the #zak-content div and all content after.
  *
  * @link    https://developer.wordpress.org/themes/basics/template-files/#template-partials
  *
@@ -28,25 +28,32 @@
 	 * @hooked zakra_footer_start - 10
 	 */
 	do_action( 'zakra_action_before_footer' );
+
+	/**
+	 * Hook - zakra_builder_footer
+	 *
+	 * @hooked zakra_footer_builder_markup - 10
+	 */
+	do_action( 'zakra_builder_footer' );
+
+	/**
+	* Hook - zakra_action_footer_widgets
+	*
+	* @hooked zakra_footer_widgets - 10
+	*/
+	do_action( 'zakra_action_footer_widgets' );
+
 	?>
-
-		<?php
+	<?php
 		/**
-		 * Hook - zakra_action_footer_widgets
-		 *
-		 * @hooked zakra_footer_widgets - 10
-		 */
-		do_action( 'zakra_action_footer_widgets' );
-		?>
+		* Hook - zakra_action_footer_bottom_bar
+		*
+		* @hooked zakra_footer_bottom_bar - 10
+		*/
+			do_action( 'zakra_action_footer_bottom_bar' );
 
-		<?php
-		/**
-		 * Hook - zakra_action_footer_bottom_bar
-		 *
-		 * @hooked zakra_footer_bottom_bar - 10
-		 */
-		do_action( 'zakra_action_footer_bottom_bar' );
-		?>
+
+	?>
 
 	<?php
 		/**

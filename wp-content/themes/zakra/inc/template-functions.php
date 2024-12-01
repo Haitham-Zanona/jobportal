@@ -5,73 +5,40 @@
  * @package zakra
  */
 
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
 if ( ! function_exists( 'zakra_pingback_header' ) ) :
+
 	/**
 	 * Add a pingback url auto-discovery header for single posts, pages, or attachments.
 	 */
 	function zakra_pingback_header() {
 
 		if ( is_singular() && pings_open() ) {
+
 			echo '<link rel="pingback" href="', esc_url( get_bloginfo( 'pingback_url' ) ), '">';
 		}
-
 	}
 endif;
 
 add_action( 'wp_head', 'zakra_pingback_header' );
 
-if ( ! function_exists( 'zakra_header_class' ) ) :
-	/**
-	 * Adds css classes into header
-	 *
-	 * @param string $class css classname.
-	 */
-	function zakra_header_class( $class = '' ) {
-
-		$classes = array();
-
-		$classes = array_map( 'esc_attr', $classes );
-
-		$classes = apply_filters( 'zakra_header_class', $classes, $class );
-		$classes = array_unique( $classes );
-
-		echo join( ' ', $classes ); // WPCS: XSS ok.
-
-	}
-endif;
-
-if ( ! function_exists( 'zakra_header_top_class' ) ) :
-	/**
-	 * Adds css classes into header
-	 *
-	 * @param string $class css classname.
-	 */
-	function zakra_header_top_class( $class = '' ) {
-
-		$classes = array();
-
-		$classes = array_map( 'esc_attr', $classes );
-
-		$classes = apply_filters( 'zakra_header_top_class', $classes, $class );
-		$classes = array_unique( $classes );
-
-		echo join( ' ', $classes ); // WPCS: XSS ok.
-
-	}
-endif;
 
 if ( ! function_exists( 'zakra_css_class' ) ) :
+
 	/**
 	 * Adds css classes to elements dynamically.
 	 *
 	 * @param string $tag Filter tag name.
+	 *
+	 * TODO: deprecate this function to Zakra_Dynamic_Filter
 	 *
 	 * @return string CSS classes.
 	 */
 	function zakra_css_class( $tag, $echo = true ) {
 
 		// Get list of css classes in array for the `$tag` aka element.
-
 		$classes = Zakra_Dynamic_Filter::filter_via_tag( $tag );
 
 		// Filter for the element classes.
@@ -82,114 +49,120 @@ if ( ! function_exists( 'zakra_css_class' ) ) :
 
 		// Output in string format.
 		if ( true === $echo ) {
-			echo join( ' ', $classes ); // WPCS: XSS ok.
+
+			echo esc_attr( join( ' ', $classes ) );
 		} else {
+
 			return join( ' ', $classes );
 		}
 	}
 endif;
 
 if ( ! function_exists( 'zakra_primary_menu_class' ) ) :
+
 	/**
 	 * Adds css classes into primary menu
+	 *
+	 * TODO: Add it to Zakra_Dynamic_Filter::css_class_list > zakra_nav_class and delete this function.
+	 * TODO: It's being used in Zakra Pro, use zakra_nav_class dynamic filter instead
 	 *
 	 * @param string $class css classname.
 	 */
 	function zakra_primary_menu_class( $class = '' ) {
 
 		$classes = array();
-
 		$classes = array_map( 'esc_attr', $classes );
-
 		$classes = apply_filters( 'zakra_primary_menu_class', $classes, $class );
 		$classes = array_unique( $classes );
 
 		echo join( ' ', $classes ); // WPCS: XSS ok.
-
 	}
 endif;
 
 if ( ! function_exists( 'zakra_footer_class' ) ) :
+
 	/**
 	 * Adds css classes into the footer
+	 *
+	 * TODO: Add it to Zakra_Dynamic_Filter::css_class_list and delete this function.
 	 *
 	 * @param string $class css classname.
 	 */
 	function zakra_footer_class( $class = '' ) {
 
 		$classes = array();
-
 		$classes = array_map( 'esc_attr', $classes );
-
 		$classes = apply_filters( 'zakra_footer_class', $classes, $class );
 		$classes = array_unique( $classes );
 
 		echo join( ' ', $classes ); // WPCS: XSS ok.
-
 	}
 endif;
 
 if ( ! function_exists( 'zakra_footer_widget_container_class' ) ) :
+
 	/**
 	 * Adds css classes into the footer widget area
+	 *
+	 * TODO: Add it to Zakra_Dynamic_Filter::css_class_list and delete this function.
+	 * TODO: It's being used in Zakra Pro, use zakra_nav_class dynamic filter instead
 	 *
 	 * @param string $class css classname.
 	 */
 	function zakra_footer_widget_container_class( $class = '' ) {
 
 		$classes = array();
-
 		$classes = array_map( 'esc_attr', $classes );
-
 		$classes = apply_filters( 'zakra_footer_widget_container_class', $classes, $class );
 		$classes = array_unique( $classes );
 
 		echo join( ' ', $classes ); // WPCS: XSS ok.
-
 	}
 endif;
 
 if ( ! function_exists( 'zakra_footer_bar_classes' ) ) :
+
 	/**
 	 * Adds css classes into the footer bar
+	 *
+	 * TODO: Add it to Zakra_Dynamic_Filter::css_class_list and delete this function.
 	 *
 	 * @param string $class css classname.
 	 */
 	function zakra_footer_bar_classes( $class = '' ) {
 
 		$classes = array();
-
 		$classes = array_map( 'esc_attr', $classes );
-
 		$classes = apply_filters( 'zakra_footer_bar_class', $classes, $class );
 		$classes = array_unique( $classes );
 
 		echo join( ' ', $classes ); // WPCS: XSS ok.
-
 	}
 endif;
 
 if ( ! function_exists( 'zakra_sidebar_class' ) ) :
+
 	/**
 	 * Adds css classes into the sidebar
+	 *
+	 * TODO: Add it to Zakra_Dynamic_Filter::css_class_list and delete this function.
+	 * TODO: It's being used in Zakra Pro, use zakra_nav_class dynamic filter instead
 	 *
 	 * @param string $class css classname.
 	 */
 	function zakra_sidebar_class( $class = '' ) {
 
 		$classes = array();
-
 		$classes = array_map( 'esc_attr', $classes );
-
-		$clasess = apply_filters( 'zakra_sidebar_class', $classes, $class );
-		$classes = array_unique( $clasess );
+		$classes = apply_filters( 'zakra_sidebar_class', $classes, $class );
+		$classes = array_unique( $classes );
 
 		echo join( ' ', $classes ); // WPCS: XSS ok.
-
 	}
 endif;
 
 if ( ! function_exists( 'zakra_get_title' ) ) :
+
 	/**
 	 * Returns page title.
 	 *
@@ -211,16 +184,16 @@ if ( ! function_exists( 'zakra_get_title' ) ) :
 
 				/* translators: %1$s: Author prefix, %2$s: Author. */
 				$page_title = sprintf( esc_html__( '%1$s %2$s', 'zakra' ), $author_title, '<span class="vcard">' . get_the_author() . '</span>' );
+
 				/**
 				 * Since we called the_post() above, we need to
 				 * rewind the loop back to the beginning that way
 				 * we can run the loop properly, in full.
 				 */
 				rewind_posts();
-            elseif ( is_post_type_archive() ) :
+			elseif ( is_post_type_archive() ) :
 
-	            $page_title = post_type_archive_title( '', false );
-
+				$page_title = post_type_archive_title( '', false );
 			elseif ( is_day() ) :
 
 				$day_title = apply_filters( 'zakra_day_title_prefix', 'Day:' );
@@ -239,31 +212,38 @@ if ( ! function_exists( 'zakra_get_title' ) ) :
 
 				/* translators: %1$s: Year prefix, %2$s: Year. */
 				$page_title = sprintf( esc_html__( '%1$s %2$s', 'zakra' ), $year_title, '<span>' . get_the_date( 'Y' ) . '</span>' );
-            elseif ( zakra_is_woocommerce_active() && function_exists( 'is_woocommerce' ) && is_woocommerce() ) :
+			elseif ( zakra_is_woocommerce_active() && function_exists( 'is_woocommerce' ) && is_woocommerce() ) :
 
-	            $page_title = woocommerce_page_title( false );
-            else :
+				$page_title = woocommerce_page_title( false );
+			else :
 
 				$page_title = single_cat_title( '', false );
 			endif;
 		} elseif ( is_404() ) {
+
 			// Page header.
-			if ( 'page-header' === zakra_is_page_title_enabled() ) {
+			if ( 'page-header' === zakra_page_title_position() ) {
+
 				$page_title = esc_html__( 'Page Not Found', 'zakra' );
 			} else { // Content area.
+
 				$page_title = esc_html__( 'Oops! That page can&rsquo;t be found.', 'zakra' );
 			}
-
 		} elseif ( is_search() ) {
+
 			$page_title = esc_html__( 'Search Results', 'zakra' );
 		} elseif ( is_page() ) {
+
 			$page_title = get_the_title();
 		} elseif ( is_single() ) {
+
 			$page_title = get_the_title();
 		} elseif ( is_home() ) {
+
 			$queried_id = get_option( 'page_for_posts' );
 			$page_title = get_the_title( $queried_id );
 		} else {
+
 			$page_title = '';
 		}
 
@@ -279,73 +259,100 @@ if ( ! function_exists( 'zakra_entry_title' ) ) :
 	 */
 	function zakra_entry_title() {
 
-		if ( 'page-header' !== zakra_is_page_title_enabled() ) {
+		if ( 'page-header' !== zakra_page_title_position() ) {
 
 			if ( is_singular() ) :
-				the_title( '<h1 class="entry-title tg-page-content__title">', '</h1>' );
+
+				the_title( '<h1 class="entry-title zak-page-content__title">', '</h1>' );
 			elseif ( is_archive() ) :
-				the_archive_title( '<h1 class="page-title tg-page-content__title">', '</h1>' );
+
+				the_archive_title( '<h1 class="page-title zak-page-content__title">', '</h1>' );
 			elseif ( is_404() ) :
 				?>
-				<h1 class="page-title tg-page-content__title"><?php esc_html_e( 'Oops! That page can&rsquo;t be found.', 'zakra' ); ?></h1>
+				<h1 class="page-title zak-page-content__title"><?php esc_html_e( 'Oops! That page can&rsquo;t be found.', 'zakra' ); ?></h1>
 			<?php
 			else :
-				the_title( '<h2 class="entry-title tg-page-content__title"><a href="' . esc_url( get_permalink() ) . '" rel="bookmark">', '</a></h2>' );
+
+				the_title( '<h2 class="entry-title zak-page-content__title"><a href="' . esc_url( get_permalink() ) . '" rel="bookmark">', '</a></h2>' );
 			endif;
-
 		}
-
 	}
 endif;
 
 if ( ! function_exists( 'zakra_get_current_layout' ) ) :
+
 	/**
 	 * Get the current layout of the page
 	 *
 	 * @return string layout.
 	 */
 	function zakra_get_current_layout() {
-		$layout            = '';
-		$individual_layout = get_post_meta( zakra_get_post_id(), 'zakra_layout', true );
 
-		if ( isset( $individual_layout ) && ! empty( $individual_layout ) && 'tg-site-layout--customizer' !== $individual_layout ) {
+		$individual_layout = get_post_meta( zakra_get_post_id(), 'zakra_sidebar_layout', true );
+
+		$default_layout    = get_theme_mod( 'zakra_default_sidebar_layout', 'right' );
+		$wc_default_layout = get_theme_mod( 'zakra_woocommerce_default_sidebar_layout', 'right' );
+
+		if ( ! empty( $individual_layout ) && 'customizer' !== $individual_layout ) {
+
 			$layout = $individual_layout;
 		} elseif ( apply_filters( 'zakra_pro_current_layout', '' ) ) {
+
 			$layout = apply_filters( 'zakra_pro_current_layout', '' );
 		} else {
 			switch ( true ) {
 
 				case ( is_singular( 'page' ) || is_404() ):
 					if ( zakra_is_woocommerce_active() && ( is_checkout() || is_cart() || is_account_page() ) ) {
-						$layout = get_theme_mod( 'zakra_structure_wc', 'tg-site-layout--right' );
+
+						$page_layout = get_theme_mod( 'zakra_woocommerce_sidebar_layout', 'right' );
+						$layout      = 'default' !== $page_layout ? $page_layout : $wc_default_layout;
 					} else {
-						$layout = get_theme_mod( 'zakra_structure_page', 'tg-site-layout--right' );
+
+						$page_layout = get_theme_mod( 'zakra_page_sidebar_layout', 'right' );
+						$layout      = 'default' !== $page_layout ? $page_layout : $default_layout;
 					}
 
 					break;
 
 				case ( is_singular() ):
 					if ( zakra_is_woocommerce_active() && is_product() ) { // WC single product.
-						$layout = get_theme_mod( 'zakra_structure_wc_product', 'tg-site-layout--right' );
+
+						$page_layout = get_theme_mod( 'zakra_woocommerce_single_product_sidebar_layout', 'right' );
+						$layout      = 'default' !== $page_layout ? $page_layout : $wc_default_layout;
 					} else {
-						$layout = get_theme_mod( 'zakra_structure_post', 'tg-site-layout--right' );
+
+						$page_layout = get_theme_mod( 'zakra_post_sidebar_layout', 'right' );
+						$layout      = 'default' !== $page_layout ? $page_layout : $default_layout;
 					}
 
 					break;
 
 				case ( is_archive() || is_home() ):
 					if ( zakra_is_woocommerce_active() && is_woocommerce() ) {
-						$layout = get_theme_mod( 'zakra_structure_wc', 'tg-site-layout--right' );
+
+						$page_layout = get_theme_mod( 'zakra_woocommerce_sidebar_layout', 'right' );
+						$layout      = 'default' !== $page_layout ? $page_layout : $wc_default_layout;
 					} else {
-						$layout = get_theme_mod( 'zakra_structure_archive', 'tg-site-layout--right' );
+
+						$page_layout = get_theme_mod( 'zakra_archive_sidebar_layout', 'right' );
+						$layout      = 'default' !== $page_layout ? $page_layout : $default_layout;
 					}
 
 					break;
 
+				case ( ! is_archive() || ! is_home() || ! is_singular() || ! is_404() || ! is_singular( 'page' ) ):
+					$page_layout = get_theme_mod( 'zakra_others_sidebar_layout', 'default' );
+					$layout      = 'default' !== $page_layout ? $page_layout : $default_layout;
+
+					break;
+
 				default:
-					$layout = get_theme_mod( 'zakra_structure_default', 'tg-site-layout--right' );
+					$layout = get_theme_mod( 'zakra_default_sidebar_layout', 'right' );
 			}
 		}
+
+		$layout = 'zak-site-layout--' . $layout;
 
 		return apply_filters( 'zakra_current_layout', $layout );
 	}
@@ -356,7 +363,7 @@ if ( ! function_exists( 'zakra_insert_mod_hatom_data' ) ) :
 	/**
 	 * Adding the support for the entry-title tag for Google Rich Snippets.
 	 *
-	 * @param  string $content The post content.
+	 * @param string $content The post content.
 	 *
 	 * @return string hatom data.
 	 */
@@ -364,7 +371,8 @@ if ( ! function_exists( 'zakra_insert_mod_hatom_data' ) ) :
 
 		$title = get_the_title();
 
-		if ( is_single() && 'page-header' === zakra_is_page_title_enabled() ) {
+		if ( is_single() && 'page-header' === zakra_page_title_position() ) {
+
 			$content .= '<div class="extra-hatom"><span class="entry-title">' . $title . '</span></div>';
 		}
 
@@ -381,8 +389,8 @@ if ( ! function_exists( 'zakra_get_image_by_id' ) ) :
 	/**
 	 * Get image HTML by id.
 	 *
-	 * @param int $id          ID of the logo image attachment.
-	 * @param int $attr        HTML alt for image.
+	 * @param int $id ID of the logo image attachment.
+	 * @param int $attr HTML alt for image.
 	 * @param int $default_alt Default alt value.
 	 */
 	function zakra_get_image_by_id( $id, $attr, $default_alt = '' ) {
@@ -391,143 +399,23 @@ if ( ! function_exists( 'zakra_get_image_by_id' ) ) :
 		$image_alt = get_post_meta( zakra_get_post_id(), '_wp_attachment_image_alt', true );
 
 		if ( empty( $image_alt ) && ! empty( $default_alt ) ) {
-			$attr['alt'] = $default_alt;
+			$attr[ 'alt' ] = $default_alt;
 		}
 
-		$image_html = wp_get_attachment_image( $id, 'full', false, $attr );
-
-		return $image_html;
+		return wp_get_attachment_image( $id, 'full', false, $attr );
 
 	}
 
 endif;
 
-if ( ! function_exists( 'zakra_menu_fallback' ) ) :
-
-	/**
-	 * Menu fallback for primary menu.
-	 *
-	 * Contains wp_list_pages to display pages created,
-	 * search icons and WooCommerce cart icon.
-	 */
-	function zakra_menu_fallback() {
-		$output  = '';
-		$output .= '<div id="primary-menu" class="menu-primary">';
-		$output .= '<ul>';
-
-		$output .= wp_list_pages(
-			array(
-				'echo'     => false,
-				'title_li' => false,
-			)
-		);
-
-		$output .= '</ul>';
-		$output .= '</div>';
-
-		// @codingStandardsIgnoreStart
-		echo $output;
-		// @codingStandardsIgnoreEnd
-	}
-
-endif;
-
-if ( ! function_exists( 'zakra_shift_extra_menu' ) ) :
-	/**
-	 * Keep menu items on one line.
-	 *
-	 * @param string   $items The HTML list content for the menu items.
-	 * @param stdClass $args  An object containing wp_nav_menu() arguments.
-	 *
-	 * @return string HTML for more button.
-	 */
-	function zakra_shift_extra_menu( $items, $args ) {
-
-		if ( 'menu-primary' === $args->theme_location && get_theme_mod( 'zakra_primary_menu_extra', false ) ) :
-
-			$items .= '<li class="menu-item menu-item-has-children tg-menu-extras-wrap">';
-			$items .= '<span class="submenu-expand">';
-			$items .= '<i class="fa fa-ellipsis-v"></i>';
-			$items .= '</span>';
-			$items .= '<ul class="sub-menu" id="tg-menu-extras">';
-			$items .= '</ul>';
-			$items .= '</li>';
-
-		endif;
-
-		return $items;
-	}
-endif;
-add_filter( 'wp_nav_menu_items', 'zakra_shift_extra_menu', 9, 2 );
-
-if ( ! function_exists( 'zakra_header_button_append' ) ) :
-	/**
-	 * Header button.
-	 *
-	 * @param string   $items The HTML list content for the menu items.
-	 * @param stdClass $args  An object containing wp_nav_menu() arguments.
-	 *
-	 * @return string HTML for header button item.
-	 */
-	function zakra_header_button_append( $items, $args ) {
-
-		$button_text   = get_theme_mod( 'zakra_header_button_text' );
-		$button_link   = get_theme_mod( 'zakra_header_button_link' );
-		$button_target = get_theme_mod( 'zakra_header_button_target' );
-		$button_target = $button_target ? ' target="_blank"' : '';
-
-		if ( 'menu-primary' === $args->theme_location && $button_text ) {
-
-			$items .= '<li class="menu-item tg-header-button-wrap tg-header-button-one">';
-			$items .= '<a href="' . esc_url( $button_link ) . '"' . esc_attr( $button_target ) . ' class = "' . zakra_css_class( 'zakra_header_button_class', false ) .'">';
-			$items .= $button_text;
-			$items .= '</a>';
-			$items .= '</li>';
-
-		}
-
-		return $items;
-	}
-endif;
-add_filter( 'wp_nav_menu_items', 'zakra_header_button_append', 8, 2 );
-
-if ( ! function_exists( 'zakra_header_button_append_to_mobile' ) ) :
-    /**
-     * Header button.
-     *
-     * @param string   $items The HTML list content for the menu items.
-     * @param stdClass $args  An object containing wp_nav_menu() arguments.
-     *
-     * @return string HTML for header button item.
-     */
-    function zakra_header_button_append_to_mobile( $items, $args ) {
-
-        $button_text   = get_theme_mod( 'zakra_header_button_text' );
-        $button_link   = get_theme_mod( 'zakra_header_button_link' );
-        $button_target = get_theme_mod( 'zakra_header_button_target' );
-        $button_target = $button_target ? ' target="_blank"' : '';
-
-        if ( 'menu-mobile' === $args->theme_location && $button_text ) {
-
-            $items .= '<li class="menu-item tg-header-button-wrap tg-header-button-one">';
-            $items .= '<a href="' . esc_url( $button_link ) . '"' . esc_attr( $button_target ) .' class = "' . zakra_css_class( 'zakra_header_button_class', false ) .'">';
-            $items .= $button_text;
-            $items .= '</a>';
-            $items .= '</li>';
-
-        }
-
-        return $items;
-    }
-endif;
-add_filter( 'wp_nav_menu_items', 'zakra_header_button_append_to_mobile', 8, 2 );
 
 if ( ! function_exists( 'zakra_responsive_oembeds' ) ) :
+
 	/**
 	 * Adds a responsive embed wrapper around oEmbed content.
 	 *
 	 * @param string $html oEmbed markup.
-	 * @param string $url  URL to embed.
+	 * @param string $url URL to embed.
 	 *
 	 * @return string
 	 */
@@ -549,10 +437,31 @@ if ( ! function_exists( 'zakra_responsive_oembeds' ) ) :
 		);
 
 		if ( zakra_strpos( $url, $hosts ) ) {
-			$html = ( '' !== $html ) ? '<div class="tg-oembed-container">' . $html . '</div>' : '';
+
+			$html = ( '' !== $html ) ? '<div class="zak-oembed-container">' . $html . '</div>' : '';
 		}
 
 		return $html;
 	}
 endif;
+
 add_filter( 'embed_oembed_html', 'zakra_responsive_oembeds', 99, 4 );
+
+if ( ! function_exists( 'zakra_change_search_field_placeholder' ) ) :
+
+	/**
+	 * Replace 'Search...' with custom placeholder text.
+	 *
+	 * TODO: @param string $form The search form HTML output.
+	 *
+	 * @return string
+	 * @since.
+	 *
+	 */
+	function zakra_change_search_field_placeholder( $form ) {
+
+		return str_replace( 'Search &hellip;', 'Type & hit enter...', $form );
+	}
+endif;
+
+add_filter( 'get_search_form', 'zakra_change_search_field_placeholder' );

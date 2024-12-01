@@ -25,7 +25,7 @@ require EVF_ABSPATH . 'includes/evf-entry-functions.php';
  */
 function evf_maybe_define_constant( $name, $value ) {
 	if ( ! defined( $name ) ) {
-		 define( $name, $value );
+		define( $name, $value );
 	}
 }
 
@@ -354,7 +354,7 @@ if ( ! function_exists( 'hash_equals' ) ) :
 		$result = 0;
 
 		// Do not attempt to "optimize" this.
-		for ( $i = 0; $i < $a_length; $i ++ ) {
+		for ( $i = 0; $i < $a_length; $i++ ) {
 			$result |= ord( $a[ $i ] ) ^ ord( $b[ $i ] );
 		}
 
@@ -750,7 +750,7 @@ function evf_get_var( &$var, $default = null ) {
  */
 function evf_enable_evf_plugin_headers( $headers ) {
 	if ( ! class_exists( 'EVF_Plugin_Updates' ) ) {
-		include_once dirname( __FILE__ ) . '/admin/plugin-updates/class-evf-plugin-updates.php';
+		include_once __DIR__ . '/admin/plugin-updates/class-evf-plugin-updates.php';
 	}
 
 	// EVF requires at least - allows developers to define which version of Everest Forms the plugin requires to run.
@@ -974,6 +974,8 @@ function evf_html_attributes( $id = '', $class = array(), $datas = array(), $att
 	$id    = trim( $id );
 	$parts = array();
 
+	$is_edit_entry = isset( $_GET['edit-entry'] ) && ! sanitize_text_field( wp_unslash( empty( $_GET['edit-entry'] ) ) ) ? true : false;
+
 	if ( ! empty( $id ) ) {
 		$id = sanitize_html_class( $id );
 		if ( ! empty( $id ) ) {
@@ -984,6 +986,10 @@ function evf_html_attributes( $id = '', $class = array(), $datas = array(), $att
 	if ( ! empty( $class ) ) {
 		$class = evf_sanitize_classes( $class, true );
 		if ( ! empty( $class ) ) {
+			// While editing hidden field should be visible.
+			if ( $is_edit_entry ) {
+				$class   = str_replace( 'evf-field-hidden', '', $class );
+			}
 			$parts[] = 'class="' . $class . '"';
 		}
 	}
@@ -1003,7 +1009,12 @@ function evf_html_attributes( $id = '', $class = array(), $datas = array(), $att
 				} else {
 					$escaped_att = sanitize_html_class( $att );
 				}
-				$parts[] = $escaped_att . '="' . esc_attr( $val ) . '"';
+				// While editing, fields must be visible even if they are hidden.
+				if ( 'style' == $escaped_att && $is_edit_entry ) {
+					$parts[] = 'style = "display: block"';
+				} else {
+					$parts[] = $escaped_att . '="' . esc_attr( $val ) . '"';
+				}
 			}
 		}
 	}
@@ -1117,7 +1128,7 @@ function evf_get_random_string( $length = 10 ) {
 	$code_alphabet .= 'abcdefghijklmnopqrstuvwxyz';
 	$code_alphabet .= '0123456789';
 	$max            = strlen( $code_alphabet );
-	for ( $i = 0; $i < $length; $i ++ ) {
+	for ( $i = 0; $i < $length; $i++ ) {
 		$string .= $code_alphabet[ evf_crypto_rand_secure( 0, $max - 1 ) ];
 	}
 
@@ -1128,9 +1139,13 @@ function evf_get_random_string( $length = 10 ) {
  * Get all forms.
  *
  * @param  bool $skip_disabled_entries True to skip disabled entries.
+ * @param bool $check_disable_storing_entry_info Check disable storing entry.
  * @return array of form data.
  */
-function evf_get_all_forms( $skip_disabled_entries = false ) {
+function evf_get_all_forms( $skip_disabled_entries = false, $check_disable_storing_entry_info = true ) {
+	if( is_null( evf()->form ) ) {
+		return array();
+	}
 	$forms    = array();
 	$form_ids = wp_parse_id_list(
 		evf()->form->get_multiple(
@@ -1150,7 +1165,9 @@ function evf_get_all_forms( $skip_disabled_entries = false ) {
 			$form_data = ! empty( $form->post_content ) ? evf_decode( $form->post_content ) : '';
 
 			if ( ! $form || ( $skip_disabled_entries && count( $entries ) < 1 ) && ( isset( $form_data['settings']['disabled_entries'] ) && '1' === $form_data['settings']['disabled_entries'] ) ) {
-				continue;
+				if ( ! $form || $check_disable_storing_entry_info ) {
+					continue;
+				}
 			}
 
 			// Check permissions for forms with viewable.
@@ -1170,6 +1187,19 @@ function evf_get_all_forms( $skip_disabled_entries = false ) {
  * @return string
  */
 function evf_get_meta_key_field_option( $field ) {
+	if ( isset( $field['type'] ) && isset( $field['label'] ) ) {
+		switch ( $field['type'] ) {
+			case 'select':
+				$field['label'] = 'Dropdown';
+				break;
+			case 'radio':
+				$field['label'] = 'Multiple Choice';
+				break;
+			case 'checkbox':
+				$field['label'] = 'Checkboxes';
+				break;
+		}
+	}
 	return str_replace( ' ', '_', preg_replace( '/[^a-zA-Z0-9\s`_]/', '', strtolower( $field['label'] ) ) ) . '_' . rand( pow( 10, 3 ), pow( 10, 4 ) - 1 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.rand_rand.
 }
 
@@ -1538,15 +1568,25 @@ function evf_get_license_plan() {
 				)
 			);
 
-			if ( ! empty( $license_data->item_plan ) ) {
+			if ( ! empty( $license_data->item_name ) ) {
+				$license_data->item_plan = trim( str_replace( 'everest forms', '', str_replace( 'lifetime', '', str_replace( '-lifetime', '', strtolower( $license_data->item_name ) ) ) ) );
 				set_transient( 'evf_pro_license_plan', $license_data, WEEK_IN_SECONDS );
 			}
 		}
-
-		return isset( $license_data->item_plan ) ? $license_data->item_plan : false;
+		return evf_handle_license_plan_compatibility( isset( $license_data->item_plan ) ? trim( str_replace( 'everest forms', '', str_replace( 'lifetime', '', str_replace( '-lifetime', '', strtolower( $license_data->item_plan ) ) ) ) ) : false );
 	}
 
 	return false;
+}
+
+/** To handle the backward compatibility for those user who is still using the plus and professional plan license key.
+*
+* @since 3.0.0
+* @param $license_plan License plan.
+*/
+function evf_handle_license_plan_compatibility( $license_plan ) {
+	$license_plan = ( 'plus' === $license_plan || 'professional' === $license_plan ) ? 'personal' : $license_plan;
+	return $license_plan;
 }
 
 /**
@@ -2174,7 +2214,7 @@ function evf_get_states() {
 			'CO-CHO' => __( 'Chocó', 'everest-forms' ),
 			'CO-COR' => __( 'Córdoba', 'everest-forms' ),
 			'CO-CUN' => __( 'Cundinamarca', 'everest-forms' ),
-			'CO-DC' => __( 'Capital District', 'everest-forms' ),
+			'CO-DC'  => __( 'Capital District', 'everest-forms' ),
 			'CO-GUA' => __( 'Guainía', 'everest-forms' ),
 			'CO-GUV' => __( 'Guaviare', 'everest-forms' ),
 			'CO-HUI' => __( 'Huila', 'everest-forms' ),
@@ -2195,12 +2235,12 @@ function evf_get_states() {
 			'CO-VID' => __( 'Vichada', 'everest-forms' ),
 		),
 		'CR' => array( // Costa Rican states.
-			'CR-A' => __( 'Alajuela', 'everest-forms' ),
-			'CR-C' => __( 'Cartago', 'everest-forms' ),
-			'CR-G' => __( 'Guanacaste', 'everest-forms' ),
-			'CR-H' => __( 'Heredia', 'everest-forms' ),
-			'CR-L' => __( 'Limón', 'everest-forms' ),
-			'CR-P' => __( 'Puntarenas', 'everest-forms' ),
+			'CR-A'  => __( 'Alajuela', 'everest-forms' ),
+			'CR-C'  => __( 'Cartago', 'everest-forms' ),
+			'CR-G'  => __( 'Guanacaste', 'everest-forms' ),
+			'CR-H'  => __( 'Heredia', 'everest-forms' ),
+			'CR-L'  => __( 'Limón', 'everest-forms' ),
+			'CR-P'  => __( 'Puntarenas', 'everest-forms' ),
 			'CR-SJ' => __( 'San José', 'everest-forms' ),
 		),
 		'CZ' => array(),
@@ -2319,30 +2359,30 @@ function evf_get_states() {
 		),
 		'EE' => array(),
 		'EC' => array( // Ecuadorian states.
-			'EC-A' => __( 'Azuay', 'everest-forms' ),
-			'EC-B' => __( 'Bolívar', 'everest-forms' ),
-			'EC-F' => __( 'Cañar', 'everest-forms' ),
-			'EC-C' => __( 'Carchi', 'everest-forms' ),
-			'EC-H' => __( 'Chimborazo', 'everest-forms' ),
-			'EC-X' => __( 'Cotopaxi', 'everest-forms' ),
-			'EC-O' => __( 'El Oro', 'everest-forms' ),
-			'EC-E' => __( 'Esmeraldas', 'everest-forms' ),
-			'EC-W' => __( 'Galápagos', 'everest-forms' ),
-			'EC-G' => __( 'Guayas', 'everest-forms' ),
-			'EC-I' => __( 'Imbabura', 'everest-forms' ),
-			'EC-L' => __( 'Loja', 'everest-forms' ),
-			'EC-R' => __( 'Los Ríos', 'everest-forms' ),
-			'EC-M' => __( 'Manabí', 'everest-forms' ),
-			'EC-S' => __( 'Morona-Santiago', 'everest-forms' ),
-			'EC-N' => __( 'Napo', 'everest-forms' ),
-			'EC-D' => __( 'Orellana', 'everest-forms' ),
-			'EC-Y' => __( 'Pastaza', 'everest-forms' ),
-			'EC-P' => __( 'Pichincha', 'everest-forms' ),
+			'EC-A'  => __( 'Azuay', 'everest-forms' ),
+			'EC-B'  => __( 'Bolívar', 'everest-forms' ),
+			'EC-F'  => __( 'Cañar', 'everest-forms' ),
+			'EC-C'  => __( 'Carchi', 'everest-forms' ),
+			'EC-H'  => __( 'Chimborazo', 'everest-forms' ),
+			'EC-X'  => __( 'Cotopaxi', 'everest-forms' ),
+			'EC-O'  => __( 'El Oro', 'everest-forms' ),
+			'EC-E'  => __( 'Esmeraldas', 'everest-forms' ),
+			'EC-W'  => __( 'Galápagos', 'everest-forms' ),
+			'EC-G'  => __( 'Guayas', 'everest-forms' ),
+			'EC-I'  => __( 'Imbabura', 'everest-forms' ),
+			'EC-L'  => __( 'Loja', 'everest-forms' ),
+			'EC-R'  => __( 'Los Ríos', 'everest-forms' ),
+			'EC-M'  => __( 'Manabí', 'everest-forms' ),
+			'EC-S'  => __( 'Morona-Santiago', 'everest-forms' ),
+			'EC-N'  => __( 'Napo', 'everest-forms' ),
+			'EC-D'  => __( 'Orellana', 'everest-forms' ),
+			'EC-Y'  => __( 'Pastaza', 'everest-forms' ),
+			'EC-P'  => __( 'Pichincha', 'everest-forms' ),
 			'EC-SE' => __( 'Santa Elena', 'everest-forms' ),
 			'EC-SD' => __( 'Santo Domingo de los Tsáchilas', 'everest-forms' ),
-			'EC-U' => __( 'Sucumbíos', 'everest-forms' ),
-			'EC-T' => __( 'Tungurahua', 'everest-forms' ),
-			'EC-Z' => __( 'Zamora-Chinchipe', 'everest-forms' ),
+			'EC-U'  => __( 'Sucumbíos', 'everest-forms' ),
+			'EC-T'  => __( 'Tungurahua', 'everest-forms' ),
+			'EC-Z'  => __( 'Zamora-Chinchipe', 'everest-forms' ),
 		),
 		'EG' => array( // Egyptian states.
 			'EGALX' => __( 'Alexandria', 'everest-forms' ),
@@ -3155,15 +3195,15 @@ function evf_get_states() {
 			'SL' => __( 'Southland', 'everest-forms' ),
 		),
 		'PA' => array( // Panamanian states.
-			'PA-1' => __( 'Bocas del Toro', 'everest-forms' ),
-			'PA-2' => __( 'Coclé', 'everest-forms' ),
-			'PA-3' => __( 'Colón', 'everest-forms' ),
-			'PA-4' => __( 'Chiriquí', 'everest-forms' ),
-			'PA-5' => __( 'Darién', 'everest-forms' ),
-			'PA-6' => __( 'Herrera', 'everest-forms' ),
-			'PA-7' => __( 'Los Santos', 'everest-forms' ),
-			'PA-8' => __( 'Panamá', 'everest-forms' ),
-			'PA-9' => __( 'Veraguas', 'everest-forms' ),
+			'PA-1'  => __( 'Bocas del Toro', 'everest-forms' ),
+			'PA-2'  => __( 'Coclé', 'everest-forms' ),
+			'PA-3'  => __( 'Colón', 'everest-forms' ),
+			'PA-4'  => __( 'Chiriquí', 'everest-forms' ),
+			'PA-5'  => __( 'Darién', 'everest-forms' ),
+			'PA-6'  => __( 'Herrera', 'everest-forms' ),
+			'PA-7'  => __( 'Los Santos', 'everest-forms' ),
+			'PA-8'  => __( 'Panamá', 'everest-forms' ),
+			'PA-9'  => __( 'Veraguas', 'everest-forms' ),
 			'PA-10' => __( 'West Panamá', 'everest-forms' ),
 			'PA-EM' => __( 'Emberá', 'everest-forms' ),
 			'PA-KY' => __( 'Guna Yala', 'everest-forms' ),
@@ -4423,10 +4463,10 @@ function evf_is_amp( $check_theme_support = true ) {
 	$is_amp = false;
 
 	if (
-	   // AMP by Automattic.
-	   ( function_exists( 'amp_is_request' ) && amp_is_request() ) ||
-	   // Better AMP.
-	   ( function_exists( 'is_better_amp' ) && is_better_amp() )
+		// AMP by Automattic.
+		( function_exists( 'amp_is_request' ) && amp_is_request() ) ||
+		// Better AMP.
+		( function_exists( 'is_better_amp' ) && is_better_amp() )
 	) {
 		$is_amp = true;
 	}
@@ -4514,9 +4554,14 @@ function evf_sanitize_builder( $post_data = array() ) {
 			$value = wp_kses_post( $data->value );
 		} elseif ( 'settings[external_url]' === $data->name ) {
 			$value = esc_url_raw( $data->value );
-		} elseif ( 'settings[email][connection_1][evf_email_message]' === $data->name ) {
+		} elseif ( preg_match( '/evf_email_message/', $data->name ) || preg_match( '/telegram_message/', $data->name )) {
 			$value = wp_kses_post( $data->value );
-		} else {
+		} elseif ( preg_match('/calculation_field/', $data->name) ) {
+			$value = wp_kses_post( $data->value );
+		} elseif ( preg_match('/successful_form_submission_message/', $data->name )) {
+			$value = wp_kses_post( $data->value );
+		}
+		else {
 			$value = sanitize_text_field( $data->value );
 		}
 
@@ -4617,10 +4662,10 @@ function evf_get_json_file_contents( $file, $to_array = false ) {
 function evf_file_get_contents( $file ) {
 	if ( $file ) {
 		$local_file = preg_replace( '/\\\\|\/\//', '/', plugin_dir_path( EVF_PLUGIN_FILE ) . $file );
-		 $response = file_get_contents($local_file);
-		 if($response){
+		$response   = file_get_contents( $local_file );
+		if ( $response ) {
 			return $response;
-		 }
+		}
 		global $wp_filesystem;
 		require_once ABSPATH . '/wp-admin/includes/file.php';
 		WP_Filesystem();
@@ -4632,3 +4677,999 @@ function evf_file_get_contents( $file ) {
 	}
 	return;
 }
+
+/**
+ * Parses datetime values based on the provided format and mode.
+ *
+ * @param string $datetime_value   The datetime value to parse.
+ * @param string $datetime_format  The format of the datetime value.
+ * @param string $date_format      The format of the date.
+ * @param string $mode             The mode of the datetime field.
+ * @param int    $time_interval    The time interval in minutes.
+ * @param int    $entry_id         The entry id.
+ * @return array
+ */
+function parse_datetime_values( $datetime_value, $datetime_format, $date_format, $mode, $time_interval, $entry_id = 0 ) {
+	$datetime_arr = array();
+
+	switch ( $datetime_format ) {
+		case 'time':
+			$current_date   = gmdate( 'Y-m-d' );
+			$datetime_value = gmdate( 'H:i', strtotime( $datetime_value ) );
+			$datetime_start = "$current_date $datetime_value";
+			$date_time      = new DateTime( $datetime_start );
+			$date_time->modify( "+$time_interval minute" );
+			$datetime_end              = $date_time->format( 'Y-m-d H:i' );
+			$datetime_arr[ $entry_id ] = array( $datetime_start, $datetime_end );
+			break;
+		case 'date':
+			if ( 'range' === $mode ) {
+				$selected_dates = explode( ' to ', $datetime_value );
+				if ( count( $selected_dates ) >= 2 ) {
+					$datetime_start = "$selected_dates[0] 00:00";
+					$datetime_start = gmdate( 'Y-m-d H:i', strtotime( $datetime_start ) );
+					$date_time      = new DateTime( $selected_dates[1] );
+					$date_time->modify( '+23 hour' );
+					$datetime_end              = $date_time->format( 'Y-m-d H:i' );
+					$datetime_arr[ $entry_id ] = array( $datetime_start, $datetime_end );
+				}
+			} else {
+				$selected_dates = explode( ', ', $datetime_value );
+
+				foreach ( $selected_dates as $selected_date ) {
+					$datetime_start = "$selected_date 00:00";
+					$datetime_start = gmdate( 'Y-m-d H:i', strtotime( $datetime_start ) );
+					$date_time      = new DateTime( $datetime_start );
+					$date_time->modify( '+23 hour' );
+
+					$datetime_end              = $date_time->format( 'Y-m-d H:i' );
+					$datetime_arr[ $entry_id ] = array( $datetime_start, $datetime_end );
+				}
+			}
+			break;
+		case 'date-time':
+			if ( 'range' === $mode ) {
+				$selected_dates = explode( ' to ', $datetime_value );
+				if ( count( $selected_dates ) >= 2 ) {
+					$datetime_start            = gmdate( 'Y-m-d H:i', strtotime( $selected_dates[0] ) );
+					$datetime_end              = gmdate( 'Y-m-d H:i', strtotime( $selected_dates[1] ) );
+					$datetime_arr[ $entry_id ] = array( $datetime_start, $datetime_end );
+				}
+			} else {
+				$selected_dates = explode( ', ', $datetime_value );
+
+				foreach ( $selected_dates as $selected_date ) {
+					$datetime_start = gmdate( 'Y-m-d H:i', strtotime( $selected_date ) );
+					$date_time      = new DateTime( $datetime_start );
+					$date_time->modify( "+$time_interval minute" );
+					$datetime_end              = $date_time->format( 'Y-m-d H:i' );
+					$datetime_arr[ $entry_id ] = array( $datetime_start, $datetime_end );
+				}
+			}
+			break;
+	}
+
+	return $datetime_arr;
+}
+
+/**
+ * EVF word Count.
+ *
+ * @param string $text Text.
+ * @param string $type Type of text.
+ * @param array  $settings Settings.
+ *
+ * @since 2.0.2
+ */
+function _evf_word_count( $text, $type = 'words', $settings = array() ) {
+	$defaults = array(
+		'html_regexp'                        => '/<\/?[a-z][^>]*?>/i',
+		'html_comment_regexp'                => '/<!--[\s\S]*?-->/',
+		'space_regexp'                       => '/&nbsp;|&#160;/i',
+		'html_entity_regexp'                 => '/&\S+?;/',
+		'connector_regexp'                   => "/--|\x{2014}/u",
+		'remove_regexp'                      => "/[\x{0021}-\x{0040}\x{005B}-\x{0060}\x{007B}-\x{007E}\x{0080}-\x{00BF}\x{00D7}\x{00F7}\x{2000}-\x{2BFF}\x{2E00}-\x{2E7F}]/u",
+		'astral_regexp'                      => "/[\x{010000}-\x{10FFFF}]/u",
+		'words_regexp'                       => '/\S\s+/u',
+		'characters_excluding_spaces_regexp' => '/\S/u',
+		'characters_including_spaces_regexp' => "/[^\f\n\r\t\v\x{00AD}\x{2028}\x{2029}]/u",
+		'shortcodes'                         => array(),
+	);
+
+	$count = 0;
+
+	if ( '' === trim( $text ) ) {
+		return $count;
+	}
+
+	$settings = wp_parse_args( $settings, $defaults );
+
+	// If there are any shortcodes, add this as a shortcode regular expression.
+	if ( is_array( $settings['shortcodes'] ) && ! empty( $settings['shortcodes'] ) ) {
+		$settings['shortcodes_regexp'] = '/\\[\\/?(?:' . implode( '|', $settings['shortcodes'] ) . ')[^\\]]*?\\]/';
+	}
+
+	// Sanitize type to one of three possibilities: 'words', 'characters_excluding_spaces' or 'characters_including_spaces'.
+	if ( 'characters_excluding_spaces' !== $type && 'characters_including_spaces' !== $type ) {
+		$type = 'words';
+	}
+
+	$text .= "\n";
+
+	// Replace all HTML with a new-line.
+	$text = preg_replace( $settings['html_regexp'], "\n", $text );
+
+	// Remove all HTML comments.
+	$text = preg_replace( $settings['html_comment_regexp'], '', $text );
+
+	// If a shortcode regular expression has been provided use it to remove shortcodes.
+	if ( ! empty( $settings['shortcodes_regexp'] ) ) {
+		$text = preg_replace( $settings['shortcodes_regexp'], "\n", $text );
+	}
+
+	// Normalize non-breaking space to a normal space.
+	$text = preg_replace( $settings['space_regexp'], ' ', $text );
+
+	if ( 'words' === $type ) {
+		// Remove HTML Entities.
+		$text = preg_replace( $settings['html_entity_regexp'], '', $text );
+
+		// Convert connectors to spaces to count attached text as words.
+		$text = preg_replace( $settings['connector_regexp'], ' ', $text );
+
+		// Remove unwanted characters.
+		$text = preg_replace( $settings['remove_regexp'], '', $text );
+	} else {
+		// Convert HTML Entities to "a".
+		$text = preg_replace( $settings['html_entity_regexp'], 'a', $text );
+
+		// Remove surrogate points.
+		$text = preg_replace( $settings['astral_regexp'], 'a', $text );
+	}
+
+	// Match with the selected type regular expression to count the items.
+	return (int) preg_match_all( $settings[ $type . '_regexp' ], $text );
+}
+
+/**
+ * EVF word Count
+ *
+ * @param string $text Text.
+ * @param string $type Type of text.
+ * @param array  $settings Settings.
+ *
+ * @since 2.0.2
+ */
+function evf_word_count( $text, $type = 'words', $settings = array() ) {
+	if ( function_exists( ' wp_word_count ' ) ) {
+		return wp_word_count( $text, $type = 'words', $settings = array() );
+	} else {
+		return _evf_word_count( $text, $type = 'words', $settings = array() );
+	}
+}
+
+if ( ! function_exists( 'evf_maybe_get_local_font_url' ) ) {
+	/**
+	 * If load fonts locally option is checked in settings, we download the font
+	 * locally and return the url for download font file.
+	 *
+	 * @param [string] $font_url Remote font url.
+	 * @return string
+	 */
+	function evf_maybe_get_local_font_url( $font_url ) {
+		$load_locally = get_option( 'everest_forms_load_fonts_locally', 'no' );
+
+		if ( 'yes' === $load_locally ) {
+			$font_url = wptt_get_webfont_url( $font_url );
+		}
+
+		return $font_url;
+	}
+}
+
+if ( ! function_exists( 'evf_is_akismet_configured' ) ) {
+
+	/**
+	 * Has the Akismet plugin been configured wih a valid API key?
+	 *
+	 * @since 2.4.0
+	 *
+	 * @return bool
+	 */
+	function evf_is_akismet_configured() {
+
+		if ( ! is_plugin_active( 'akismet/akismet.php' ) ) {
+			return false;
+		}
+
+		require_once WP_PLUGIN_DIR . '/akismet/akismet.php';
+
+		$akismet_instance = new Akismet();
+		// Akismet will only allow an API key to be saved if it is a valid key.
+		// We can assume that if there is an API key saved, it is valid.
+		$api_key = $akismet_instance->get_api_key();
+
+		if ( ! empty( $api_key ) ) {
+			return true;
+		}
+
+		return false;
+	}
+}
+
+if ( ! function_exists( 'evf_current_url' ) ) {
+	/**
+	 * Get the current URL.
+	 *
+	 * @since 2.4.0
+	 *
+	 * @return string
+	 */
+	function evf_current_url() {
+
+		$parsed_home_url = wp_parse_url( home_url() );
+
+		$url = $parsed_home_url['scheme'] . '://' . $parsed_home_url['host'];
+
+		if ( ! empty( $parsed_home_url['port'] ) ) {
+			$url .= ':' . $parsed_home_url['port'];
+		}
+
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$url .= wp_unslash( $_SERVER['REQUEST_URI'] );
+
+		return esc_url_raw( $url );
+	}
+}
+
+if ( ! function_exists( 'evf_get_utc_time_to' ) ) {
+	/**
+	 * Formats the end time in UTC format.
+	 *
+	 * @since 2.0.9
+	 *
+	 * @param string $evf_entries_report_summary_offset Time offest to be formatted in UTC time.
+	 * @param string $evf_format DateTime format for UTC time.
+	 * @param bool   $evf_display Display the time.
+	 *
+	 * @return datetime end_time in UTC format.
+	 */
+	function evf_get_utc_time_to( $evf_entries_report_summary_offset, $evf_format = 'Y-m-d H:i:s', $evf_display = false ) {
+
+		// Get local time 23:59:59 today.
+		$evf_time_to_local = wp_date( 'Y-m-d 23:59:59' );
+		$evf_format        = 'Y-m-d H:i:s';
+
+		// Get local time to.
+		$evf_time_to_offset = strtotime( $evf_entries_report_summary_offset, strtotime( $evf_time_to_local ) );
+
+		if ( $evf_display ) {
+
+			return gmdate( $evf_format, $evf_time_to_offset );
+
+		} else {
+
+			return strtotime( get_gmt_from_date( gmdate( $evf_format, $evf_time_to_offset ) ) );
+		}
+	}
+}
+
+
+if ( ! function_exists( 'evf_get_utc_time_from' ) ) {
+	/**
+	 * Extarcts the start time in UTC format.
+	 *
+	 * @since 2.0.9
+	 *
+	 * @param string $evf_entries_report_summary_offset Start time to be formated in UTC format.
+	 * @param string $evf_format DateTime format for start time.
+	 * @param bool   $evf_display To hide or display the time.
+	 *
+	 * @return datetime start_time in utc format.
+	 */
+	function evf_get_utc_time_from( $evf_entries_report_summary_offset, $evf_format = 'Y-m-d H:i:s', $evf_display = false ) {
+
+		// Get local time midnight today.
+		$evf_time_from_local = wp_date( 'Y-m-d 00:00:00' );
+		$evf_format          = 'Y-m-d H:i:s';
+
+		// Get local time from.
+		$evf_time_from_offset = strtotime( $evf_entries_report_summary_offset, strtotime( $evf_time_from_local ) );
+
+		if ( $evf_display ) {
+
+			return gmdate( $evf_format, $evf_time_from_offset );
+
+		} else {
+
+			return strtotime( get_gmt_from_date( gmdate( $evf_format, $evf_time_from_offset ) ) );
+		}
+	}
+}
+
+
+if ( ! function_exists( 'evf_summary_start_offset_time' ) ) {
+	/**
+	 * Extracts the start offset time according to the duration.
+	 *
+	 * @since 2.0.9
+	 * @return datetime $starttime.
+	 */
+	function evf_summary_start_offset_time() {
+		// Get options.
+		$evf_report_frequency   = get_option( 'everest_forms_entries_reporting_frequency', 'Weekly' );
+		$evf_report_offset_from = '';
+		$evf_report_email_to    = '';
+		$evf_date_format        = '';
+		$evf_report_offset_to   = '';
+
+		// Set everest forms reporting frequency specific variables.
+		switch ( $evf_report_frequency ) {
+
+			case 'Daily':
+				$evf_report_email_title = __( 'Everest Forms Daily Entries Statistics Report', 'everest-forms' );
+				$evf_report_offset_from = '-1 days';
+				break;
+
+			case 'Weekly':
+				$evf_report_email_title = __( 'Everest Forms Weekly Entries Statistics Report', 'everest-forms' );
+				$evf_report_offset_from = '-8 days';
+				break;
+
+			case 'Monthly':
+				$evf_report_email_title = __( 'Everest Forms Monthly Entries Statistics Report', 'everest-forms' );
+				$evf_report_offset_from = '-1 month -1 day';
+				break;
+		}
+
+		// Build date range.
+		$date_format = get_option( 'date_format' );
+
+		$start_time = evf_get_utc_time_from( $evf_report_offset_from, $date_format, true );
+		return $start_time;
+	}
+}
+
+if ( ! function_exists( 'evf_summary_end_offset_time' ) ) {
+	/**
+	 * Extracts the end offset time according to the duration.
+	 *
+	 * @since 2.0.9
+	 * @return datetime $end_time.
+	 */
+	function evf_summary_end_offset_time() {
+		// Get options.
+		$evf_report_frequency   = get_option( 'everest_forms_entries_reporting_frequency', 'Weekly' );
+		$evf_report_offset_from = '';
+		$evf_report_email_to    = '';
+		$evf_date_format        = '';
+		$evf_report_offset_to   = '';
+
+		// Set everest forms reporting frequency specific variables.
+		switch ( $evf_report_frequency ) {
+
+			case 'Daily':
+				$evf_report_email_title = __( 'Everest Forms Daily Entries Statistics Report', 'everest-forms' );
+				$evf_report_offset_to   = '-1 day';
+				break;
+
+			case 'Weekly':
+				$evf_report_email_title = __( 'Everest Forms Weekly Entries Statistics Report', 'everest-forms' );
+				$evf_report_offset_to   = '-1 day';
+				break;
+
+			case 'Monthly':
+				$evf_report_email_title = __( 'Everest Forms Monthly Entries Statistics Report', 'everest-forms' );
+				$evf_report_offset_to   = '-1 day';
+				break;
+		}
+
+		// Build date range.
+		$date_format = get_option( 'date_format' );
+
+		$end_time = evf_get_utc_time_to( $evf_report_offset_to, $date_format, true );
+
+		return $end_time;
+	}
+}
+
+
+if ( ! function_exists( 'evf_entries_summaries' ) ) {
+	/**
+	 * Function to extract the entries summary from the database.
+	 *
+	 * @since 2.0.9.
+	 * @return array $evf_stat_data_output Statistics data from the database as an output.
+	 */
+	function evf_entries_summaries() {
+		// Get options.
+		$evf_report_frequency = get_option( 'everest_forms_entries_reporting_frequency', 'Weekly' );
+		$offset_from          = '';
+		$offset_to            = '';
+
+		// Set everest forms reporting frequency specific variables.
+		switch ( $evf_report_frequency ) {
+
+			case 'Daily':
+				$evf_report_email_title = __( 'Everest Forms Daily Entries Statistics Report', 'everest-forms' );
+				$offset_from            = '-1 days';
+				$offset_to              = '-1 day';
+				break;
+
+			case 'Weekly':
+				$evf_report_email_title = __( 'Everest Forms Weekly Entries Statistics Report', 'everest-forms' );
+				$offset_from            = '-8 days';
+				$offset_to              = '-1 day';
+				break;
+
+			case 'Monthly':
+				$evf_report_email_title = __( 'Everest Forms Monthly Entries Statistics Report', 'everest-forms' );
+				$offset_from            = '-1 month -1 day';
+				$offset_to              = '-1 day';
+				break;
+		}
+
+		global $wpdb;
+
+		$evf_date_format         = 'Y-m-d H:i:s';
+		$evf_stat_start          = evf_get_utc_time_from( $offset_from, $evf_date_format, true );
+		$evf_stat_end            = evf_get_utc_time_to( $offset_to, $evf_date_format, true );
+		$evf_stat_selected_forms = get_option( 'everest_forms_reporting_form_lists', array() );
+		$evf_stat_data_output    = '';
+		foreach ( $evf_stat_selected_forms as $evf_stat_selected_form ) {
+			$evf_stat_data_output = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT
+				{$wpdb->prefix}posts.post_title,
+				{$wpdb->prefix}evf_entries.form_id,
+				COUNT(form_id) AS entries_count
+			FROM
+			{$wpdb->prefix}posts
+			INNER JOIN
+			{$wpdb->prefix}evf_entries ON {$wpdb->prefix}posts.id = {$wpdb->prefix}evf_entries.form_id
+			WHERE
+			{$wpdb->prefix}evf_entries.date_created BETWEEN '%1s' AND '%2s'
+			GROUP BY
+			{$wpdb->prefix}evf_entries.form_id",
+					$evf_stat_start,
+					$evf_stat_end
+				)
+			);
+			break;
+		}
+		return $evf_stat_data_output;
+	}
+}
+
+if ( ! function_exists( 'evf_process_all_fields_smart_tag' ) ) {
+	/**
+	 * Return email content wrapped in email template if {all_fields} is there in email content.
+	 *
+	 * @since 2.0.5
+	 * @param string $email_content Email Content.
+	 * @return string
+	 */
+	function evf_process_all_fields_smart_tag( $email_content ) {
+
+		$email_content  = '<div class="evf-all-fields-smart-tag-email-body" background-color: #ebebeb;">';
+		$email_content .= '<table border="0" cellpadding="0" cellspacing="0" width="100%" style="min-width:100%;border-collapse:collapse background:#cccccc" >';
+		$email_content .= '<tbody>';
+		$email_content .= '<tr>';
+		$email_content .= '<td valign="top">';
+		$email_content .= '<table align="left" border="0" cellpadding="0" cellspacing="0" width="100%" style="min-width:100%;border-collapse:collapse" class="mcnTextContentContainer">';
+		$email_content .= '<tbody>';
+		$email_content .= '<tr>';
+		$email_content .= '<td valign = "top" class = "mcnTextContent">';
+		$email_content .= "<table align = 'left' border = '0' cellpadding = '0' cellspacing = '0' width = '100%' style = 'display:block;min-width:100%;border-collapse:collapse;width:100%'>";
+		$email_content .= '<tbody>';
+		$email_content .= '<tr>';
+		$email_content .= "<td style = 'color:#333333;padding-top:20px;padding-bottom:3px'><strong>Name</strong></td>";
+		$email_content .= '</tr>';
+		$email_content .= '<tr>';
+		$email_content .= "<td style = 'color:#555555;padding-top:3px;padding-bottom:20px'>Demo Name</td>";
+		$email_content .= '</tr>';
+		$email_content .= '</tbody>';
+		$email_content .= '</table>';
+		$email_content .= "<table align = 'left' border = '0' cellpadding = '0' cellspacing = '0' width = '100%' style = 'border-top:1px solid #dddddd;display:block;min-width:100%;border-collapse:collapse;width:100%'>";
+		$email_content .= '<tbody>';
+		$email_content .= '<tr>';
+		$email_content .= "<td style = 'color:#333333;padding-top:20px;padding-bottom:3px'> <strong>Email</strong><tr / td >";
+		$email_content .= '</tr>';
+		$email_content .= '<tr>';
+		$email_content .= "<td style = 'color:#555555;padding-top:3px;padding-bottom:20px' > <a href = '#' target = '_blank'>Demo Email</a></td>";
+		$email_content .= '</tr>';
+		$email_content .= '</tbody>';
+		$email_content .= '</table>';
+		$email_content .= "<table align = 'left' border = '0' cellpadding = '0' cellspacing = '0' width = '100%' style = 'border-top:1px solid #dddddd;display:block;min-width:100%;border-collapse:collapse;width:100%'>";
+		$email_content .= '<tbody>';
+		$email_content .= '<tr>';
+		$email_content .= "<td style = 'color:#333333;padding-top:20px;padding-bottom:3px'><strong>Email Subject</strong></td>";
+		$email_content .= '</tr>';
+		$email_content .= '<tr>';
+		$email_content .= "<td style = 'color:#555555;padding-top:3px;padding-bottom:20px'>Demo Email Subject</td>";
+		$email_content .= '</tr>';
+		$email_content .= '</tbody>';
+		$email_content .= '</table>';
+		$email_content .= "<table align = 'left' border = '0' cellpadding = '0' cellspacing = '0' width = '100%' style = 'border-top:1px solid #dddddd;display:block;min-width:100%;border-collapse:collapse;width:100%'>";
+		$email_content .= '<tbody>';
+		$email_content .= '<tr>';
+		$email_content .= "<td style = 'color:#333333;padding-top:20px;padding-bottom:3px'><strong>Email Message</strong></td>";
+		$email_content .= '</tr>';
+		$email_content .= '<tr>';
+		$email_content .= "<td style = 'color:#555555;padding-top:3px;padding-bottom:20px'>Demo Email Message</td>";
+		$email_content .= '</tr>';
+		$email_content .= '</tbody>';
+		$email_content .= '</table>';
+		$email_content .= '</td>';
+		$email_content .= '</tr>';
+		$email_content .= '</tbody>';
+		$email_content .= '</table>';
+		$email_content .= '</td>';
+		$email_content .= '</tr>';
+		$email_content .= '</tbody>';
+		$email_content .= '</table>';
+		$email_content .= '</div>';
+
+		return $email_content;
+	}
+}
+
+add_action( 'everest_forms_init', 'evf_check_addons_update' );
+
+if ( ! function_exists( 'evf_check_addons_update' ) ) {
+
+	/**
+	 * Manually check for addons update.
+	 */
+	function evf_check_addons_update() {
+		if ( class_exists( 'EVF_Plugin_Updater' ) ) {
+
+			$plugins_to_check = array();
+
+			if ( class_exists( 'EverestForms_Pro' ) && is_plugin_active( 'everest-forms-pro/everest-forms-pro.php' ) && defined( 'EFP_PLUGIN_FILE' ) && defined( 'EFP_VERSION' ) ) {
+				$plugins_to_check['EverestForms_Pro'] = array(
+					'plugin'  => 'everest-forms-pro/everest-forms-pro.php',
+					'file'    => EFP_PLUGIN_FILE,
+					'id'      => 3441,
+					'version' => EFP_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms_Survey_Polls_Quiz' ) && is_plugin_active( 'everest-forms-survey-polls-quiz/everest-forms-survey-polls-quiz.php' ) && defined( 'EVF_SURVEY_POLLS_QUIZ_PLUGIN_FILE' ) && defined( 'EVF_SURVEY_POLLS_QUIZ_VERSION' ) ) {
+				$plugins_to_check['EverestForms_Survey_Polls_Quiz'] = array(
+					'plugin'  => 'everest-forms-survey-polls-quiz/everest-forms-survey-polls-quiz.php',
+					'file'    => EVF_SURVEY_POLLS_QUIZ_PLUGIN_FILE,
+					'id'      => 16165,
+					'version' => EVF_SURVEY_POLLS_QUIZ_VERSION,
+				);
+
+			}
+
+			if ( class_exists( 'EverestForms_ActiveCampaign' ) && is_plugin_active( 'everest-forms-activecampaign/everest-forms-activecampaign.php' ) && defined( 'EVF_ACTIVECAMPAIGN_PLUGIN_FILE' ) && defined( 'EVF_ACTIVE_CAMPAIGN_VERSION' ) ) {
+				$plugins_to_check['EverestForms_ActiveCampaign'] = array(
+					'plugin'  => 'everest-forms-activecampaign/everest-forms-activecampaign.php',
+					'file'    => EVF_ACTIVECAMPAIGN_PLUGIN_FILE,
+					'id'      => 61754,
+					'version' => EVF_ACTIVE_CAMPAIGN_VERSION,
+				);
+
+			}
+
+			if ( class_exists( 'EverestForms\\AuthorizeNet\\AuthorizeNet' ) && is_plugin_active( 'everest-forms-authorize-net/everest-forms-authorize-net.php' ) && defined( 'EVF_AUTHORIZE_NET_PLUGIN_FILE' ) && defined( 'EVF_AUTHORIZE_NET_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\AuthorizeNet\\AuthorizeNet'] = array(
+					'plugin'  => 'everest-forms-authorize-net/everest-forms-authorize-net.php',
+					'file'    => EVF_AUTHORIZE_NET_PLUGIN_FILE,
+					'id'      => 249228,
+					'version' => EVF_AUTHORIZE_NET_VERSION,
+				);
+
+			}
+
+			if ( class_exists( 'EverestForms\\Calculations\\Calculations' ) && is_plugin_active( 'everest-forms-calculations/everest-forms-calculations.php' ) && defined( 'EVF_CALCULATIONS_PLUGIN_FILE' ) && defined( 'EVF_CALCULATIONS_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\Calculations\\Calculations'] = array(
+					'plugin'  => 'everest-forms-calculations/everest-forms-calculations.php',
+					'file'    => EVF_CALCULATIONS_PLUGIN_FILE,
+					'id'      => 193220,
+					'version' => EVF_CALCULATIONS_VERSION,
+				);
+
+			}
+
+			if ( class_exists( 'EverestForms_Campaign_Monitor' ) && is_plugin_active( 'everest-forms-campaign-monitor/everest-forms-campaign-monitor.php' ) && defined( 'EVF_CAMPAIGN_MONITOR_PLUGIN_FILE' ) && defined( 'EVF_CAMPAIGN_MONITOR_VERSION' ) ) {
+				$plugins_to_check['EverestForms_Campaign_Monitor'] = array(
+					'plugin'  => 'everest-forms-campaign-monitor/everest-forms-campaign-monitor.php',
+					'file'    => EVF_CAMPAIGN_MONITOR_PLUGIN_FILE,
+					'id'      => 76871,
+					'version' => EVF_CAMPAIGN_MONITOR_VERSION,
+				);
+
+			}
+
+			if ( class_exists( 'EverestForms_Captcha' ) && is_plugin_active( 'everest-forms-captcha/everest-forms-captcha.php' ) && defined( 'EVF_CAPTCHA_PLUGIN_FILE' ) && defined( 'EVF_CAPTCHA_VERSION' ) ) {
+				$plugins_to_check['EverestForms_Captcha'] = array(
+					'plugin'  => 'everest-forms-captcha/everest-forms-captcha.php',
+					'file'    => EVF_CAPTCHA_PLUGIN_FILE,
+					'id'      => 22441,
+					'version' => EVF_CAPTCHA_VERSION,
+				);
+
+			}
+
+			if ( class_exists( 'EverestForms\\Cloud_Storage\\Cloud_Storage' ) && is_plugin_active( 'everest-forms-cloud-storage/everest-forms-cloud-storage.php' ) && defined( 'EVF_CLOUD_STORAGE_PLUGIN_FILE' ) && defined( 'EVF_CLOUD_STORAGE_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\Cloud_Storage\\Cloud_Storage'] = array(
+					'plugin'  => 'everest-forms-cloud-storage/everest-forms-cloud-storage.php',
+					'file'    => EVF_CLOUD_STORAGE_PLUGIN_FILE,
+					'id'      => 226644,
+					'version' => EVF_CLOUD_STORAGE_VERSION,
+				);
+			}
+			if ( class_exists( 'EverestForms\\Constant_Contact\\Constant_Contact' ) && is_plugin_active( 'everest-forms-constant-contact/everest-forms-constant-contact.php' ) && defined( 'EVF_CONSTANT_CONTACT_PLUGIN_FILE' ) && defined( 'EVF_CONSTANT_CONTACT_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\Constant_Contact\\Constant_Contact'] = array(
+					'plugin'  => 'everest-forms-constant-contact/everest-forms-constant-contact.php',
+					'file'    => EVF_CONSTANT_CONTACT_PLUGIN_FILE,
+					'id'      => 226646,
+					'version' => EVF_CONSTANT_CONTACT_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\ConversationalForms\\ConversationalForms' ) && is_plugin_active( 'everest-forms-conversational-forms/everest-forms-conversational-forms.php' ) && defined( 'EVF_CONVERSATIONAL_FORMS_PLUGIN_FILE' ) && defined( 'EVF_CONVERSATIONAL_FORMS_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\ConversationalForms\\ConversationalForms'] = array(
+					'plugin'  => 'everest-forms-conversational-forms/everest-forms-conversational-forms.php',
+					'file'    => EVF_CONVERSATIONAL_FORMS_PLUGIN_FILE,
+					'id'      => 232580,
+					'version' => EVF_CONVERSATIONAL_FORMS_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms_ConvertKit' ) && is_plugin_active( 'everest-forms-convertkit/everest-forms-convertkit.php' ) && defined( 'EVF_CONVERTKIT_PLUGIN_FILE' ) && defined( 'EVF_CONVERTKIT_VERSION' ) ) {
+				$plugins_to_check['EverestForms_ConvertKit'] = array(
+					'plugin'  => 'everest-forms-convertkit/everest-forms-convertkit.php',
+					'file'    => EVF_CONVERTKIT_PLUGIN_FILE,
+					'id'      => 3435,
+					'version' => EVF_CONVERTKIT_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\Coupons\\Coupons' ) && is_plugin_active( 'everest-forms-coupons/everest-forms-coupons.php' ) && defined( 'EVF_COUPONS_PLUGIN_FILE' ) && defined( 'EVF_COUPONS_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\Coupons\\Coupons'] = array(
+					'plugin'  => 'everest-forms-coupons/everest-forms-coupons.php',
+					'file'    => EVF_COUPONS_PLUGIN_FILE,
+					'id'      => 211435,
+					'version' => EVF_COUPONS_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\Drip\\Drip' ) && is_plugin_active( 'everest-forms-drip/everest-forms-drip.php' ) && defined( 'EVF_DRIP_PLUGIN_FILE' ) && defined( 'EVF_DRIP_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\Drip\\Drip'] = array(
+					'plugin'  => 'everest-forms-drip/everest-forms-drip.php',
+					'file'    => EVF_DRIP_PLUGIN_FILE,
+					'id'      => 211428,
+					'version' => EVF_DRIP_VERSION,
+				);
+			}
+			if ( class_exists( 'EverestForms_Email_Templates' ) && is_plugin_active( 'everest-forms-email-templates/everest-forms-email-templates.php' ) && defined( 'EVF_EMAIL_TEMPLATES_PLUGIN_FILE' ) && defined( 'EVF_EMAIL_TEMPLATES_VERSION' ) ) {
+				$plugins_to_check['EverestForms_Email_Templates'] = array(
+					'plugin'  => 'everest-forms-email-templates/everest-forms-email-templates.php',
+					'file'    => EVF_EMAIL_TEMPLATES_PLUGIN_FILE,
+					'id'      => 72043,
+					'version' => EVF_EMAIL_TEMPLATES_VERSION,
+				);
+			}
+			if ( class_exists( 'EverestForms\\FormAnalytics\\FormAnalytics' ) && is_plugin_active( 'everest-forms-form-analytics/everest-forms-form-analytics.php' ) && defined( 'EVF_FORM_ANALYTICS_PLUGIN_FILE' ) && defined( 'EVF_FORM_ANALYTICS_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\FormAnalytics\\FormAnalytics'] = array(
+					'plugin'  => 'everest-forms-form-analytics/everest-forms-form-analytics.php',
+					'file'    => EVF_FORM_ANALYTICS_PLUGIN_FILE,
+					'id'      => 252609,
+					'version' => EVF_FORM_ANALYTICS_VERSION,
+				);
+			}
+			if ( class_exists( 'EverestForms_Form_Restriction' ) && is_plugin_active( 'everest-forms-form-restriction/everest-forms-form-restriction.php' ) && defined( 'EVF_FORM_RESTRICTION_PLUGIN_FILE' ) && defined( 'EVF_FORM_RESTRICTION_VERSION' ) ) {
+				$plugins_to_check['EverestForms_Form_Restriction'] = array(
+					'plugin'  => 'everest-forms-form-restriction/everest-forms-form-restriction.php',
+					'file'    => EVF_FORM_RESTRICTION_PLUGIN_FILE,
+					'id'      => 61758,
+					'version' => EVF_FORM_RESTRICTION_VERSION,
+				);
+			}
+			if ( class_exists( 'EverestForms\\FrontendListing\\FrontendListing' ) && is_plugin_active( 'everest-forms-frontend-listing/everest-forms-frontend-listing.php' ) && defined( 'EVF_FRONTEND_LISTING_PLUGIN_FILE' ) && defined( 'EVF_FRONTEND_LISTING_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\FrontendListing\\FrontendListing'] = array(
+					'plugin'  => 'everest-forms-frontend-listing/everest-forms-frontend-listing.php',
+					'file'    => EVF_FRONTEND_LISTING_PLUGIN_FILE,
+					'id'      => 211437,
+					'version' => EVF_FRONTEND_LISTING_VERSION,
+				);
+			}
+			if ( class_exists( 'EverestForms_Geolocation' ) && is_plugin_active( 'everest-forms-geolocation/everest-forms-geolocation.php' ) && defined( 'EVF_GEOLOCATION_PLUGIN_FILE' ) && defined( 'EVF_GEOLOCATION_VERSION' ) ) {
+				$plugins_to_check['EverestForms_Geolocation'] = array(
+					'plugin'  => 'everest-forms-geolocation/everest-forms-geolocation.php',
+					'file'    => EVF_GEOLOCATION_PLUGIN_FILE,
+					'id'      => 3632,
+					'version' => EVF_GEOLOCATION_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\GetResponse\\GetResponse' ) && is_plugin_active( 'everest-forms-getresponse/everest-forms-getresponse.php' ) && defined( 'EVF_GETRESPONSE_PLUGIN_FILE' ) && defined( 'EVF_GETRESPONSE_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\GetResponse\\GetResponse'] = array(
+					'plugin'  => 'everest-forms-getresponse/everest-forms-getresponse.php',
+					'file'    => EVF_GETRESPONSE_PLUGIN_FILE,
+					'id'      => 230163,
+					'version' => EVF_GETRESPONSE_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\Google_Sheets\\Plugin' ) && is_plugin_active( 'everest-forms-google-sheets/everest-forms-google-sheets.php' ) && defined( 'EVF_GOOGLE_SHEETS_PLUGIN_FILE' ) && defined( 'EVF_GOOGLE_SHEETS_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\Google_Sheets\\Plugin'] = array(
+					'plugin'  => 'everest-forms-google-sheets/everest-forms-google-sheets.php',
+					'file'    => EVF_GOOGLE_SHEETS_PLUGIN_FILE,
+					'id'      => 72041,
+					'version' => EVF_GOOGLE_SHEETS_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\Hubspot\\Hubspot' ) && is_plugin_active( 'everest-forms-hubspot/everest-forms-hubspot.php' ) && defined( 'EVF_HUBSPOT_PLUGIN_FILE' ) && defined( 'EVF_HUBSPOT_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\Hubspot\\Hubspot'] = array(
+					'plugin'  => 'everest-forms-hubspot/everest-forms-hubspot.php',
+					'file'    => EVF_HUBSPOT_PLUGIN_FILE,
+					'id'      => 211431,
+					'version' => EVF_HUBSPOT_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms_MailChimp' ) && is_plugin_active( 'everest-forms-mailchimp/everest-forms-mailchimp.php' ) && defined( 'EVF_MAILCHIMP_PLUGIN_FILE' ) && defined( 'EVF_MAILCHIMP_VERSION' ) ) {
+				$plugins_to_check['EverestForms_MailChimp'] = array(
+					'plugin'  => 'everest-forms-mailchimp/everest-forms-mailchimp.php',
+					'file'    => EVF_MAILCHIMP_PLUGIN_FILE,
+					'id'      => 3432,
+					'version' => EVF_MAILCHIMP_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms_MailerLite' ) && is_plugin_active( 'everest-forms-mailerlite/everest-forms-mailerlite.php' ) && defined( 'EVF_MAILERLITE_PLUGIN_FILE' ) && defined( 'EVF_MAILERLITE_VERSION' ) ) {
+				$plugins_to_check['EverestForms_MailerLite'] = array(
+					'plugin'  => 'everest-forms-mailerlite/everest-forms-mailerlite.php',
+					'file'    => EVF_MAILERLITE_PLUGIN_FILE,
+					'id'      => 61756,
+					'version' => EVF_MAILERLITE_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms_MultiPart' ) && is_plugin_active( 'everest-forms-multi-part/everest-forms-multi-part.php' ) && defined( 'EVF_MULTI_PART_PLUGIN_FILE' ) && defined( 'EVF_MULTI_PART_VERSION' ) ) {
+				$plugins_to_check['EverestForms_MultiPart'] = array(
+					'plugin'  => 'everest-forms-multi-part/everest-forms-multi-part.php',
+					'file'    => EVF_MULTI_PART_PLUGIN_FILE,
+					'id'      => 5422,
+					'version' => EVF_MULTI_PART_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms_PayPal_Standard' ) && is_plugin_active( 'everest-forms-paypal-standard/everest-forms-paypal-standard.php' ) && defined( 'EVF_PAYPAL_STANDARD_PLUGIN_FILE' ) && defined( 'EVF_PAYPALL_STANDARD_VERSION' ) ) {
+				$plugins_to_check['EverestForms_PayPal_Standard'] = array(
+					'plugin'  => 'everest-forms-paypal-standard/everest-forms-paypal-standard.php',
+					'file'    => EVF_PAYPAL_STANDARD_PLUGIN_FILE,
+					'id'      => 3437,
+					'version' => EVF_PAYPALL_STANDARD_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms_PDF_Submission' ) && is_plugin_active( 'everest-forms-pdf-submission/everest-forms-pdf-submission.php' ) && defined( 'EVF_PDF_SUBMISSION_PLUGIN_FILE' ) && defined( 'EVF_PDF_SUBMISSION_VERSION' ) ) {
+				$plugins_to_check['EverestForms_PDF_Submission'] = array(
+					'plugin'  => 'everest-forms-pdf-submission/everest-forms-pdf-submission.php',
+					'file'    => EVF_PDF_SUBMISSION_PLUGIN_FILE,
+					'id'      => 3439,
+					'version' => EVF_PDF_SUBMISSION_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\Pipedrive\\Pipedrive' ) && is_plugin_active( 'everest-forms-pipedrive/everest-forms-pipedrive.php' ) && defined( 'EVF_PIPEDRIVE_PLUGIN_FILE' ) && defined( 'EVF_PIPEDRIVE_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\Pipedrive\\Pipedrive'] = array(
+					'plugin'  => 'everest-forms-pipedrive/everest-forms-pipedrive.php',
+					'file'    => EVF_PIPEDRIVE_PLUGIN_FILE,
+					'id'      => 211433,
+					'version' => EVF_PIPEDRIVE_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms_Post_Submissions' ) && is_plugin_active( 'everest-forms-post-submission/everest-forms-post-submission.php' ) && defined( 'EVF_POST_SUBMISSIONS_PLUGIN_FILE' ) && defined( 'EVF_POST_SUBMISSIONS_VERSION' ) ) {
+				$plugins_to_check['EverestForms_Post_Submissions'] = array(
+					'plugin'  => 'everest-forms-post-submission/everest-forms-post-submission.php',
+					'file'    => EVF_POST_SUBMISSIONS_PLUGIN_FILE,
+					'id'      => 22436,
+					'version' => EVF_POST_SUBMISSIONS_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\Razorpay\\Razorpay' ) && is_plugin_active( 'everest-forms-razorpay/everest-forms-razorpay.php' ) && defined( 'EVF_RAZORPAY_PLUGIN_FILE' ) && defined( 'EVF_RAZORPAY_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\Razorpay\\Razorpay'] = array(
+					'plugin'  => 'everest-forms-razorpay/everest-forms-razorpay.php',
+					'file'    => EVF_RAZORPAY_PLUGIN_FILE,
+					'id'      => 205578,
+					'version' => EVF_RAZORPAY_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\Repeater_Fields\\Plugin' ) && is_plugin_active( 'everest-forms-repeater-fields/everest-forms-repeater-fields.php' ) && defined( 'EVF_REPEATER_FIELDS_PLUGIN_FILE' ) && defined( 'EVF_REPEATER_FIELDS_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\Repeater_Fields\\Plugin'] = array(
+					'plugin'  => 'everest-forms-repeater-fields/everest-forms-repeater-fields.php',
+					'file'    => EVF_REPEATER_FIELDS_PLUGIN_FILE,
+					'id'      => 157038,
+					'version' => EVF_REPEATER_FIELDS_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\Salesflare\\Salesflare' ) && is_plugin_active( 'everest-forms-salesflare/everest-forms-salesflare.php' ) && defined( 'EVF_SALESFLARE_PLUGIN_FILE' ) && defined( 'EVF_SALESFLARE_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\Salesflare\\Salesflare'] = array(
+					'plugin'  => 'everest-forms-salesflare/everest-forms-salesflare.php',
+					'file'    => EVF_SALESFLARE_PLUGIN_FILE,
+					'id'      => 72049,
+					'version' => EVF_SALESFLARE_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\SaveAndContinue\\Plugin' ) && is_plugin_active( 'everest-forms-save-and-continue/everest-forms-save-and-continue.php' ) && defined( 'EVF_SAVE_AND_CONTINUE_PLUGIN_FILE' ) && defined( 'EVF_SAVE_AND_CONTINUE_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\SaveAndContinue\\Plugin'] = array(
+					'plugin'  => 'everest-forms-save-and-continue/everest-forms-save-and-continue.php',
+					'file'    => EVF_SAVE_AND_CONTINUE_PLUGIN_FILE,
+					'id'      => 148284,
+					'version' => EVF_SAVE_AND_CONTINUE_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\Sendinblue\\Sendinblue' ) && is_plugin_active( 'everest-forms-sendinblue/everest-forms-sendinblue.php' ) && defined( 'EVF_SENDINBLUE_PLUGIN_FILE' ) && defined( 'EVF_SENDINBLUE_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\Sendinblue\\Sendinblue'] = array(
+					'plugin'  => 'everest-forms-sendinblue/everest-forms-sendinblue.php',
+					'file'    => EVF_SENDINBLUE_PLUGIN_FILE,
+					'id'      => 230165,
+					'version' => EVF_SENDINBLUE_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\SmsNotification\\SmsNotification' ) && is_plugin_active( 'everest-forms-sms-notifications/everest-forms-sms-notifications.php' ) && defined( 'EVF_SMS_NOTIFICATION_PLUGIN_FILE' ) && defined( 'EVF_SMS_NOTIFICATION_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\SmsNotification\\SmsNotification'] = array(
+					'plugin'  => 'everest-forms-sms-notifications/everest-forms-sms-notifications.php',
+					'file'    => EVF_SMS_NOTIFICATION_PLUGIN_FILE,
+					'id'      => 205580,
+					'version' => EVF_SMS_NOTIFICATION_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms_Style_Customizer' ) && is_plugin_active( 'everest-forms-style-customizer/everest-forms-style-customizer.php' ) && defined( 'EVF_STYLE_CUSTOMIZER_PLUGIN_FILE' ) && defined( 'EVF_STYLE_CUSTOMIZER_VERSION' ) ) {
+				$plugins_to_check['EverestForms_Style_Customizer'] = array(
+					'plugin'  => 'everest-forms-style-customizer/everest-forms-style-customizer.php',
+					'file'    => EVF_STYLE_CUSTOMIZER_PLUGIN_FILE,
+					'id'      => 16166,
+					'version' => EVF_STYLE_CUSTOMIZER_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms_User_Registration' ) && is_plugin_active( 'everest-forms-user-registration/everest-forms-user-registration.php' ) && defined( 'EVF_USER_REGISTRATION_PLUGIN_FILE' ) && defined( 'EVF_USER_REGISTRATION_VERSION' ) ) {
+				$plugins_to_check['EverestForms_User_Registration'] = array(
+					'plugin'  => 'everest-forms-user-registration/everest-forms-user-registration.php',
+					'file'    => EVF_USER_REGISTRATION_PLUGIN_FILE,
+					'id'      => 22439,
+					'version' => EVF_USER_REGISTRATION_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms_Zapier' ) && is_plugin_active( 'everest-forms-zapier/everest-forms-zapier.php' ) && defined( 'EVF_ZAPIER_PLUGIN_FILE' ) && defined( 'EVF_ZAPIER_VERSION' ) ) {
+				$plugins_to_check['EverestForms_Zapier'] = array(
+					'plugin'  => 'everest-forms-zapier/everest-forms-zapier.php',
+					'file'    => EVF_ZAPIER_PLUGIN_FILE,
+					'id'      => 18350,
+					'version' => EVF_ZAPIER_VERSION,
+				);
+			}
+
+			if ( class_exists( 'EverestForms\\Zoho\\Zoho' ) && is_plugin_active( 'everest-forms-zoho/everest-forms-zoho.php' ) && defined( 'EVF_ZAPIER_PLUGIN_FILE' ) && defined( 'EVF_ZOHO_VERSION' ) ) {
+				$plugins_to_check['EverestForms\\Zoho\\Zoho'] = array(
+					'plugin'  => 'everest-forms-zoho/everest-forms-zoho.php',
+					'file'    => EVF_ZAPIER_PLUGIN_FILE,
+					'id'      => 219736,
+					'version' => EVF_ZOHO_VERSION,
+				);
+			}
+			$current = get_site_transient( 'update_plugins' );
+
+			foreach ( $plugins_to_check as $class_name => $plugin_data ) {
+				if ( ! isset( $current->response[ $plugin_data['plugin'] ] ) ) {
+					\EVF_Plugin_Updater::updates( $plugin_data['file'], $plugin_data['id'], $plugin_data['version'] );
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Get one time draggable fields fields.
+ *
+ * @return array
+ */
+function evf_get_one_time_draggable_fields() {
+	return apply_filters(
+		'everest_forms_one_time_draggable_form_fields',
+		array(
+			'file-upload',
+		)
+	);
+}
+
+/**
+ * Retrieve the next key in an array from given key.
+ *
+ * @param    array   $arr        List of items in a form of array.
+ * @param    integer $key        Key to search and find within the array.
+ * @return   mixed
+ */
+function evf_get_next_key_array( $arr, $key ) {
+	$keys     = array_keys( $arr );
+	$position = array_search( $key, $keys, true );
+
+	if ( isset( $keys[ $position + 1 ] ) ) {
+		$next_key = $keys[ $position + 1 ];
+	}
+
+	return isset( $next_key ) ? $next_key : '' ;
+}
+/**
+ * Function to generate the api key base on the string.
+ *
+ * @since xx.xx.xx
+ * @param $string The string value.
+ */
+function generate_api_key( $string = 'evf_restapi', $length = 32 ) {
+	$key = bin2hex( random_bytes( $length ) );
+
+    return $key;
+}
+
+add_action( 'wp_mail_failed', 'evf_email_send_failed_handler', 1 );
+
+if ( ! function_exists( 'evf_email_send_failed_handler' ) ) {
+
+	/**
+	 * Handle errors fetch mechanism when mail send failed.
+	 *
+	 * @param object $error_instance WP_Error message instance.
+	 */
+	function evf_email_send_failed_handler( $error_instance ) {
+		$error_message = '';
+		$decoded_message = json_decode( $error_instance->get_error_message() );
+
+		if ( json_last_error() === JSON_ERROR_NONE && ! empty( $decoded_message ) ) {
+			/* translators: %s: Status Log URL */
+			$error_message = wp_kses_post( sprintf( __( 'Please check the `evf_mail_errors` log under <a target="_blank" href="%s"> Logs </a> section.', 'everest-forms' ), admin_url( 'admin.php?page=evf-tools&tab=logs' ) ) );
+		} else {
+			$error_message = $error_instance->get_error_message();
+		}
+
+		evf_get_logger()->info(
+			$error_message,
+			array( 'source' => 'evf_mail_errors' )
+		);
+
+		if ( ! empty( $error_message ) ) {
+			add_filter(
+				'everest_forms_email_send_failed_message',
+				function ( $msg ) use ( $error_message ) {
+					return $error_message;
+				}
+			);
+		}
+	}
+}
+
+add_action( 'admin_head', function() {
+	$js = <<<JS
+const isSidebarEnabled = localStorage.getItem( 'isPremiumSidebarEnabled' );
+const interval = setInterval( () => {
+	if ( document.body ) {
+		clearInterval(interval);
+		if ('true' === isSidebarEnabled) {
+			document.body.classList.add( 'evf-premium-sidebar-show' );
+		} else {
+			document.body.classList.add( 'evf-premium-sidebar-hidden' );
+		}
+	}
+}, 1 );
+JS;
+	wp_print_inline_script_tag( $js );
+} );

@@ -15,7 +15,7 @@
 get_header();
 ?>
 
-	<div id="primary" class="content-area">
+	<main id="zak-primary" class="zak-primary">
 		<?php echo apply_filters( 'zakra_after_primary_start_filter', false ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
 		<?php
@@ -33,7 +33,7 @@ get_header();
 		?>
 
 		<?php echo apply_filters( 'zakra_after_primary_end_filter', false ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-	</div><!-- #primary -->
+	</main><!-- /.zak-primary -->
 
 <?php
 get_sidebar();

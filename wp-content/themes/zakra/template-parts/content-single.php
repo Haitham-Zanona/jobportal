@@ -7,8 +7,11 @@
  * @package zakra
  */
 
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
 $content_orders = get_theme_mod(
-	'zakra_single_post_content_structure', array(
+	'zakra_single_post_elements', array(
 		'featured_image',
 		'title',
 		'meta',
@@ -17,85 +20,45 @@ $content_orders = get_theme_mod(
 );
 
 $meta_orders = get_theme_mod(
-	'zakra_single_blog_post_meta_structure', array(
-		'comments',
-		'categories',
+	'zakra_single_meta_elements', array(
 		'author',
 		'date',
+		'categories',
 		'tags',
+		'comments',
 	)
 );
 
-$meta_style = get_theme_mod( 'zakra_blog_archive_meta_style', 'tg-meta-style-one' );
+$meta_style = get_theme_mod( 'zakra_post_meta_style', 'style-1' );
+$meta_style = 'zak-' . $meta_style;
 ?>
 
 <article id="post-<?php the_ID(); ?>" <?php post_class( $meta_style ); ?>>
 	<?php do_action( 'zakra_before_single_post' ); ?>
 
 	<?php
-	foreach ( $content_orders as $key => $content_order ) :
-		if ( 'featured_image' === $content_order ) :
-			zakra_post_thumbnail();
+	foreach ( $content_orders as $key => $content_order ) {
 
-		elseif ( 'title' === $content_order ) :
+		if ( 'featured_image' === $content_order ) {
 
-			if ( 'page-header' !== zakra_is_page_title_enabled() ) : ?>
-				<header class="entry-header">
-					<h1 class="entry-title tg-page-content__title">
-						<?php echo wp_kses_post( zakra_get_title() ); ?>
-					</h1>
-				</header><!-- .entry-header -->
-			<?php endif;
+			get_template_part( 'template-parts/entry/entry', 'thumbnail' );
+		}
 
-		elseif ( 'meta' === $content_order && 'post' === get_post_type() ) : ?>
-			<div class="entry-meta">
-				<?php
-				foreach ( $meta_orders as $key => $meta_order ) {
-					if ( 'comments' === $meta_order ) {
-						zakra_post_comments();
-					} elseif ( 'categories' === $meta_order ) {
-						zakra_posted_in();
-					} elseif ( 'author' === $meta_order ) {
-						zakra_posted_by();
-					} elseif ( 'date' === $meta_order ) {
-						zakra_posted_on();
-					} elseif ( 'tags' === $meta_order ) {
-						zakra_post_tags();
-					}
-				}
-				?>
-			</div><!-- .entry-meta -->
+		elseif ( 'title' === $content_order ) {
 
-		<?php elseif ( 'content' === $content_order ) : ?>
-			<div class="entry-content">
-				<?php
-				the_content(
-					sprintf(
-						wp_kses(
-						    /* translators: %s: Name of current post. Only visible to screen readers */
-							__( 'Continue reading<span class="screen-reader-text"> "%s"</span>', 'zakra' ),
-							array(
-								'span' => array(
-									'class' => array(),
-								),
-							)
-						),
-						get_the_title()
-					)
-				);
+			get_template_part( 'template-parts/entry/entry', 'header' );
+		}
 
-				wp_link_pages(
-					array(
-						'before' => '<div class="page-links">' . esc_html__( 'Pages:', 'zakra' ),
-						'after'  => '</div>',
-					)
-				);
-				?>
-			</div><!-- .entry-content -->
+		elseif ( 'meta' === $content_order && 'post' === get_post_type() ) {
 
-		<?php
-		endif;
-	endforeach;
+			get_template_part( 'template-parts/entry/entry', 'meta' );
+		}
+
+		elseif ( 'content' === $content_order ) {
+
+			get_template_part( 'template-parts/entry/entry', 'content' );
+		}
+	}
 	?>
 
 	<?php do_action( 'zakra_after_single_post' ); ?>

@@ -24,6 +24,10 @@ if ( ! class_exists( 'Zakra_WooCommerce' ) ) {
 			add_action( 'wp_enqueue_scripts', array( $this, 'woocommerce_scripts' ) );
 			add_filter( 'body_class', array( $this, 'woocommerce_active_body_class' ) );
 
+			add_action( 'woocommerce_before_quantity_input_field', array( $this, 'product_quantity_minus_button' ) );
+			add_action( 'woocommerce_after_quantity_input_field', array( $this, 'product_quantity_plus_button' ) );
+			add_action( 'wp_footer', array( $this, 'product_quantity' ) );
+
 			// Remove WC wrappers.
 			remove_action( 'woocommerce_before_main_content', 'woocommerce_output_content_wrapper', 10 );
 			remove_action( 'woocommerce_after_main_content', 'woocommerce_output_content_wrapper_end', 10 );
@@ -39,9 +43,6 @@ if ( ! class_exists( 'Zakra_WooCommerce' ) ) {
 			remove_action( 'woocommerce_sidebar', array( $this, 'woocommerce_get_sidebar' ), 10 );
 
 			add_filter( 'zakra_get_sidebar', array( $this, 'get_sidebar' ), 15 );
-
-            // Filter WC blocks html.
-            add_filter( 'woocommerce_blocks_product_grid_item_html', array( $this, 'blocks_product_grid_item_html' ), 10, 3 );
 		}
 
 		/**
@@ -65,12 +66,87 @@ if ( ! class_exists( 'Zakra_WooCommerce' ) ) {
 		 * @return void
 		 */
 		public function woocommerce_scripts() {
-			wp_enqueue_style( 'zakra-woocommerce-style', ZAKRA_PARENT_URI . '/assets/css/woocommerce.css', '', ZAKRA_THEME_VERSION );
+			wp_enqueue_style( 'zakra-woocommerce-style', ZAKRA_PARENT_URI . '/woocommerce.css', '', ZAKRA_THEME_VERSION );
 
 			add_filter( 'zakra_dynamic_theme_wc_css', array( 'Zakra_Dynamic_CSS', 'render_wc_output' ) );
 
 			$theme_wc_dynamic_css = apply_filters( 'zakra_dynamic_theme_wc_css', '' );
 			wp_add_inline_style( 'zakra-woocommerce-style', $theme_wc_dynamic_css );
+
+			$font_path   = WC()->plugin_url() . '/assets/fonts/';
+			$inline_font = '
+			@font-face {
+				font-family: "star";
+				src: url("' . $font_path . 'star.eot");
+				src: url("' . $font_path . 'star.eot?#iefix") format("embedded-opentype"),
+					url("' . $font_path . 'star.woff") format("woff"),
+					url("' . $font_path . 'star.ttf") format("truetype"),
+					url("' . $font_path . 'star.svg#star") format("svg");
+				font-weight: normal;
+				font-style: normal;
+			}
+			@font-face {
+				font-family: "WooCommerce";
+				src: url("' . $font_path . 'WooCommerce.eot");
+				src: url("' . $font_path . 'WooCommerce.eot?#iefix") format("embedded-opentype"),
+					url("' . $font_path . 'WooCommerce.woff") format("woff"),
+					url("' . $font_path . 'WooCommerce.ttf") format("truetype"),
+					url("' . $font_path . 'WooCommerce.svg#star") format("svg");
+				font-weight: normal;
+				font-style: normal;
+			}
+			';
+
+			wp_add_inline_style( 'zakra-woocommerce-style', $inline_font );
+		}
+
+		public function product_quantity_minus_button() {
+			?>
+			<button type="button" class="zak-qty-controller zak-qty-minus" data-qty="minus">-</button>
+			<?php
+		}
+
+		function product_quantity_plus_button() {
+			?>
+			<button type="button" class="zak-qty-controller zak-qty-plus" data-qty="plus">+</button>
+			<?php
+		}
+
+		public function product_quantity() {
+
+			wc_enqueue_js(
+				"
+      $(document).on( 'click', '.zak-qty-plus, .zak-qty-minus', function() {
+
+         var qty = $( this ).parent( '.quantity' ).find( '.qty' );
+         var val = parseFloat(qty.val());
+         var max = parseFloat(qty.attr( 'max' ));
+         var min = parseFloat(qty.attr( 'min' ));
+         var step = parseFloat(qty.attr( 'step' ));
+
+         if ( $( this ).is( '.zak-qty-plus' ) ) {
+            if ( max && ( max <= val ) ) {
+               qty.val( max ).change();
+            } else {
+            	if(val) {
+               qty.val( val + step ).change();
+               }
+               else {
+               qty.val( 0 + step ).change();
+               }
+            }
+         } else {
+            if ( min && ( min >= val ) ) {
+               qty.val( min ).change();
+            } else if ( val > min ) {
+               qty.val( val - step ).change();
+            }
+         }
+
+      });
+
+   "
+			);
 		}
 
 		/**
@@ -95,7 +171,7 @@ if ( ! class_exists( 'Zakra_WooCommerce' ) ) {
 		 */
 		public function woocommerce_wrapper_before() {
 			?>
-			<div id="primary" class="content-area">
+			<main id="zak-primary" class="zak-primary">
 			<?php
 		}
 
@@ -108,7 +184,7 @@ if ( ! class_exists( 'Zakra_WooCommerce' ) ) {
 		 */
 		public function woocommerce_wrapper_after() {
 			?>
-			</div><!-- #primary -->
+			</main><!-- /.zak-primary -->
 			<?php
 		}
 
@@ -146,7 +222,7 @@ if ( ! class_exists( 'Zakra_WooCommerce' ) ) {
 				'%d',
 				WC()->cart->get_cart_contents_count()
 			);
-			$output .= '<i class="tg-icon tg-icon-shopping-cart"></i>';
+			$output .= '<svg class="zak-icon zakra-icon--cart" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 24 24"><path d="M18.5 22c-1 0-1.8-.8-1.8-1.8s.8-1.8 1.8-1.8 1.8.8 1.8 1.8-.8 1.8-1.8 1.8zm0-2c-.2 0-.2 0-.2.2s0 .2.2.2.2 0 .2-.2 0-.2-.2-.2zm-8.9 2c-1 0-1.8-.8-1.8-1.8s.8-1.8 1.8-1.8 1.8.8 1.8 1.8-.8 1.8-1.8 1.8zm0-2c-.2 0-.2 0-.2.2s0 .2.2.2.2 0 .2-.2 0-.2-.2-.2zm8.4-2.9h-7.9c-1.3 0-2.4-.9-2.6-2.2L6.1 8.2v-.1L5.4 4H3c-.6 0-1-.4-1-1s.4-1 1-1h3.3c.5 0 .9.4 1 .8L8 7h12.9c.3 0 .6.1.8.4.2.2.3.5.2.8L20.6 15c-.3 1.3-1.3 2.1-2.6 2.1zM8.3 9l1.2 5.6c.1.4.4.5.6.5H18c.1 0 .5 0 .6-.5L19.7 9H8.3z"/></svg>';
 			$output .= '<span class="count">' . esc_html( $item_count_text ) . '</span>';
 			$output .= '</a>';
 
@@ -168,7 +244,7 @@ if ( ! class_exists( 'Zakra_WooCommerce' ) ) {
 				$class = '';
 			}
 
-			$output .= '<li class="menu-item tg-menu-item tg-menu-item-cart ' . $class . '">';
+			$output .= '<li class="menu-item zak-menu-item zak-menu-item-cart ' . $class . '">';
 			$output .= self::woocommerce_cart_link();
 			$output .= '</li>';
 
@@ -182,7 +258,7 @@ if ( ! class_exists( 'Zakra_WooCommerce' ) ) {
 		 */
 		public function woocommerce_page_title() {
 
-			if ( 'page-header' === get_theme_mod( 'zakra_page_title_enabled', 'page-header' ) ) {
+			if ( 'page-header' === get_theme_mod( 'zakra_page_title_position', 'page-header' ) ) {
 				return false;
 			}
 
@@ -194,7 +270,7 @@ if ( ! class_exists( 'Zakra_WooCommerce' ) ) {
 		 */
 		public function woocommerce_remove_product_title() {
 
-			if ( 'page-header' === get_theme_mod( 'zakra_page_title_enabled', 'page-header' ) ) {
+			if ( 'page-header' === get_theme_mod( 'zakra_page_title_position', 'page-header' ) ) {
 				remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_title', 5 );
 			}
 		}
@@ -208,84 +284,50 @@ if ( ! class_exists( 'Zakra_WooCommerce' ) ) {
 		public function get_sidebar( $sidebar ) {
 
 			if (
-				is_woocommerce() &&
-				'tg-site-layout--left' === zakra_get_current_layout()
+				( is_woocommerce() || is_cart() || is_checkout() ) &&
+				'zak-site-layout--left' === zakra_get_current_layout()
 			) {
 				return 'wc-left-sidebar';
 			}
 
 			if (
-				( is_woocommerce() && 'tg-site-layout--right' === zakra_get_current_layout() ) ||
-				( is_woocommerce() && 'tg-site-layout--2-sidebars' === zakra_get_current_layout() )
+				( ( is_woocommerce() || is_cart() || is_checkout() ) && 'zak-site-layout--right' === zakra_get_current_layout() ) ||
+				( ( is_woocommerce() || is_cart() || is_checkout() ) && 'zak-site-layout--2-sidebars' === zakra_get_current_layout() )
 			) {
 				return 'wc-right-sidebar';
 			}
 
 			return $sidebar;
 		}
-
-        /**
-         * Change default HTML markup of product in blocks.
-         *
-         * @since 1.0.0
-         *
-         * @param object $html The existing HTML for the product block.
-         * @param object $data The data that includes information regarding the product block that was entered.
-         * @param object $product The post that the product block is getting added to. Could be a page, post, custom post type, etc.
-         * @return string
-         */
-        public function blocks_product_grid_item_html( $html, $data, $product ) {
-
-            $classes = apply_filters( 'webshop_blocks_product_list_class', array( 'wc-block-grid__product', 'product' ) );
-            $classes = esc_attr( implode( ' ', $classes ) );
-
-            $badge_position = get_theme_mod( 'webshop_shop_sale_badge_position', 'over_image' );
-            $badge_enabled  = get_theme_mod( 'webshop_shop_sale_badge', true );
-            $badge_text     = $this->block_grid_item_sale_badge( $product, $badge_position );
-            $badge_over     = ( 'over_image' === $badge_position && $badge_enabled ) ? $badge_text : '';
-            $badge_normal   = ( 'normal' === $badge_position && $badge_enabled ) ? $badge_text : '';
-
-            $html = "<li class=\"{$classes}\">
-						<a href=\"{$data->permalink}\" class=\"wc-block-grid__product-link\">
-							{$badge_over}
-							{$data->image}
-							{$data->title}
-						</a>
-						{$data->price}
-				        {$data->button}
-			        </li>";
-
-            return $html;
-        }
-
-        /**
-         * Get the sale badge.
-         *
-         * @since 1.0.0
-         *
-         * @param WC_Product|object $product Product.
-         * @param string            $position Position of sale badge.
-         * @return string Rendered product output.
-         */
-        public function block_grid_item_sale_badge( $product, $position ) {
-
-            $sale_badge_text            = get_theme_mod( 'webshop_shop_sale_badge_text', __( 'Sale!', 'zakra' ) );
-            $text                       = 'Sale!' !== $sale_badge_text ? esc_html( $sale_badge_text ) : esc_html__( 'Sale!', 'zakra' );
-            $sale_badge_opening_wrapper = 'normal' === $position ? '<div class="ws-onsale-wrapper">' : '';
-            $sale_badge_closing_wrapper = 'normal' === $position ? '</div>' : '';
-
-            if ( ! $product->is_on_sale() || '' === $text ) {
-                return '';
-            }
-
-            return $sale_badge_opening_wrapper . '
-				<div class="wc-block-grid__product-onsale">
-					<span aria-hidden="true">' . $text . '</span>
-					<span class="screen-reader-text">' . esc_html__( 'Product on sale', 'zakra' ) . '</span>
-				</div>
-				' . $sale_badge_closing_wrapper;
-        }
 	}
 
 	new Zakra_WooCommerce();
 }
+
+add_filter( 'woocommerce_enqueue_styles', '__return_empty_array' );
+
+/**
+ * Opening element for filter wrapper at the top of WC pages.
+ *
+ * @since 1.0.0
+ *
+ * @return void
+	 */
+function zakra_woocommerce_filter_wrapper_before() {
+	echo '<div class="zak-wc-filter">';
+}
+
+/**
+ * Closing element for filter wrapper at the top of WC pages.
+ *
+ * @since 1.0.0
+ *
+ * @return void
+ */
+function zakra_woocommerce_filter_wrapper_after() {
+	echo '</div><!-- /.zak-wc-filter -->';
+}
+
+// Add filter wrapper.
+add_action( 'woocommerce_before_shop_loop', 'zakra_woocommerce_filter_wrapper_before', 10 );
+add_action( 'woocommerce_before_shop_loop', 'zakra_woocommerce_filter_wrapper_after', 30 );

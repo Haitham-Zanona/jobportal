@@ -51,6 +51,9 @@ class EVF_Shortcode_Form {
 
 		// reCaptcha Language.
 		add_filter( 'everest_forms_frontend_recaptcha_url', array( __CLASS__, 'evf_recaptcha_language' ), 10, 1 );
+
+		// Enable for submission waiting time.
+		add_filter( 'everest_forms_display_fields_before', array( 'EVF_Shortcode_Form', 'evf_form_submission_waiting_time' ) );
 	}
 
 	/**
@@ -505,6 +508,11 @@ class EVF_Shortcode_Form {
 		} elseif ( 'hcaptcha' === $recaptcha_type ) {
 			$site_key   = get_option( 'everest_forms_recaptcha_hcaptcha_site_key' );
 			$secret_key = get_option( 'everest_forms_recaptcha_hcaptcha_secret_key' );
+		} elseif ( 'turnstile' === $recaptcha_type ) {
+			$site_key   = get_option( 'everest_forms_recaptcha_turnstile_site_key' );
+			$secret_key = get_option( 'everest_forms_recaptcha_turnstile_secret_key' );
+			$theme      = get_option( 'everest_forms_recaptcha_turnstile_theme' );
+			$lang       = get_option( 'everest_forms_recaptcha_recaptcha_language', 'en-GB' );
 		}
 
 		if ( ! $site_key || ! $secret_key ) {
@@ -572,6 +580,10 @@ class EVF_Shortcode_Form {
 					$recaptcha_api     = apply_filters( 'everest_forms_frontend_recaptcha_url', 'https://hcaptcha.com/1/api.js??onload=EVFRecaptchaLoad&render=explicit', $recaptcha_type, $form_id );
 					$recaptcha_inline  = 'var EVFRecaptchaLoad = function(){jQuery(".g-recaptcha").each(function(index, el){var recaptchaID =  hcaptcha.render(el,{callback:function(){EVFRecaptchaCallback(el);}},true);jQuery(el).attr( "data-recaptcha-id", recaptchaID);});};';
 					$recaptcha_inline .= 'var EVFRecaptchaCallback = function(el){jQuery(el).parent().find(".evf-recaptcha-hidden").val("1").trigger("change").valid();};';
+				} elseif ( 'turnstile' === $recaptcha_type ) {
+					$recaptcha_api     = apply_filters( 'everest_forms_frontend_recaptcha_url', 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=EVFTurnstileLoad&render=explicit', $recaptcha_type, $form_id );
+					$recaptcha_inline  = 'var EVFTurnstileLoad = function(){jQuery(".g-recaptcha").each(function(index, el){var recaptchaID =  turnstile.render(el,{theme:"' . $theme . '",language:"' . $lang . '",callback:function(){EVFRecaptchaCallback(el);}},true);jQuery(el).attr( "data-recaptcha-id", recaptchaID);});};';
+					$recaptcha_inline .= 'var EVFRecaptchaCallback = function(el){jQuery(el).parent().find(".evf-recaptcha-hidden").val("1").trigger("change").valid();};';
 				}
 
 				// Enqueue reCaptcha scripts.
@@ -594,10 +606,10 @@ class EVF_Shortcode_Form {
 				$class = ( 'v3' === $recaptcha_type || ( 'v2' === $recaptcha_type && 'yes' === $invisible_recaptcha ) ) ? 'recaptcha-hidden' : '';
 				echo '<div class="evf-recaptcha-container ' . esc_attr( $class ) . '" style="display:' . ( ! empty( self::$parts[ $form_id ] ) ? 'none' : 'block' ) . '">';
 
-				if ( 'v2' === $recaptcha_type || 'hcaptcha' === $recaptcha_type ) {
+				if ( 'v2' === $recaptcha_type || 'hcaptcha' === $recaptcha_type || 'turnstile' === $recaptcha_type ) {
 					echo '<div ' . evf_html_attributes( '', array( 'g-recaptcha' ), $data ) . '></div>';
 
-					if ( 'hcaptcha' === $recaptcha_type && 'no' === $invisible_recaptcha ) {
+					if ( 'hcaptcha' === $recaptcha_type && 'no' === $invisible_recaptcha || 'turnstile' === $recaptcha_type ) {
 						echo '<input type="text" name="g-recaptcha-hidden" class="evf-recaptcha-hidden" style="position:absolute!important;clip:rect(0,0,0,0)!important;height:1px!important;width:1px!important;border:0!important;overflow:hidden!important;padding:0!important;margin:0!important;" required>';
 					}
 				} else {
@@ -724,9 +736,11 @@ class EVF_Shortcode_Form {
 				$likert_rows    = isset( $field['likert_rows'] ) ? $field['likert_rows'] : array();
 				$row_keys       = array();
 				foreach ( $likert_rows as $row_key => $row_label ) {
-					$row_keys[]                     = $row_key;
-					$row_slug                       = 'required-field-message-' . $row_key;
-					$sub_field_messages[ $row_key ] = isset( $field[ $row_slug ] ) ? evf_string_translation( $form_data['id'], $field['id'], $field[ $row_slug ], '-' . $row_slug ) : $required_validation;
+					$row_keys[] = $row_key;
+					$row_slug   = 'required-field-message-' . $row_key;
+
+					$error_message                  = isset( $field[ $row_slug ] ) ? evf_string_translation( $form_data['id'], $field['id'], $field[ $row_slug ], '-' . $row_slug ) : $required_validation;
+					$sub_field_messages[ $row_key ] = htmlspecialchars( wp_kses( html_entity_decode( $error_message ), array() ) );
 				}
 				$container_data['row-keys'] = wp_json_encode( $row_keys );
 			} elseif ( 'address' === $field['type'] ) {
@@ -742,16 +756,18 @@ class EVF_Shortcode_Form {
 
 			if ( true === $has_sub_fields ) {
 				foreach ( $sub_field_messages as $sub_field_type => $error_message ) {
-					$container_data[ 'required-field-message-' . $sub_field_type ] = $error_message;
+					$container_data[ 'required-field-message-' . $sub_field_type ] = htmlspecialchars( wp_kses( html_entity_decode( $error_message ), array() ) );
+
 				}
 			} else {
-
 				if ( isset( $field['required_field_message_setting'] ) && 'global' === $field['required_field_message_setting'] ) {
-					$container_data['required-field-message'] = $required_validation;
+					$container_data['required-field-message'] = htmlspecialchars( wp_kses( html_entity_decode( $required_validation ), array() ) );
+
 				} elseif ( isset( $field['required-field-message'] ) && '' !== $field['required-field-message'] ) {
-					$container_data['required-field-message'] = evf_string_translation( $form_data['id'], $field['id'], $field['required-field-message'], '-required-field-message' );
+					$required_data                            = evf_string_translation( $form_data['id'], $field['id'], $field['required-field-message'], '-required-field-message' );
+					$container_data['required-field-message'] = htmlspecialchars( wp_kses( html_entity_decode( $required_data ), array() ) );
 				} else {
-					$container_data['required-field-message'] = $required_validation;
+					$container_data['required-field-message'] = htmlspecialchars( wp_kses( html_entity_decode( $required_validation ), array() ) );
 				}
 			}
 		}
@@ -825,6 +841,7 @@ class EVF_Shortcode_Form {
 	 */
 	public static function output( $atts ) {
 		wp_enqueue_script( 'everest-forms' );
+		wp_enqueue_script( 'everest-forms-survey-polls-quiz-script' );
 
 		// Load jQuery flatpickr libraries. https://github.com/flatpickr/flatpickr.
 		if ( evf_is_field_exists( $atts['id'], 'date-time' ) ) {
@@ -836,6 +853,8 @@ class EVF_Shortcode_Form {
 		if ( evf_is_field_exists( $atts['id'], 'email' ) && (bool) apply_filters( 'everest_forms_mailcheck_enabled', true ) ) {
 			wp_enqueue_script( 'mailcheck' );
 		}
+
+		self::add_custom_css_js( $atts['id'] );
 
 		$atts = shortcode_atts(
 			array(
@@ -891,13 +910,13 @@ class EVF_Shortcode_Form {
 		$form_enabled    = isset( $form_data['form_enabled'] ) ? absint( $form_data['form_enabled'] ) : 1;
 		$kff_enabled     = isset( $settings['keyboard_friendly_form'] ) ? absint( $settings['keyboard_friendly_form'] ) : 0;
 		$disable_message = isset( $form_data['settings']['form_disable_message'] ) ? evf_string_translation( $form_data['id'], 'form_disable_message', $form_data['settings']['form_disable_message'] ) : __( 'This form is disabled.', 'everest-forms' );
-		if ( isset( $form_data['payments']['stripe']['enable_stripe'] ) && '1' === $form_data['payments']['stripe']['enable_stripe'] ) {
+		if ( ( isset( $form_data['payments']['stripe']['enable_stripe'] ) && '1' === $form_data['payments']['stripe']['enable_stripe'] ) || ( isset( $form_data['payments']['square']['enable_square'] ) && '1' === $form_data['payments']['square']['enable_square'] ) ) {
 			$ajax_form_submission = isset( $settings['ajax_form_submission'] ) ? 1 : 0;
 		} else {
 			$ajax_form_submission = isset( $settings['ajax_form_submission'] ) ? $settings['ajax_form_submission'] : 0;
 		}
 
-		if ( 0 !== $ajax_form_submission ) {
+		if ( 0 !== evf_string_to_bool( $ajax_form_submission ) ) {
 			wp_enqueue_script( 'everest-forms-ajax-submission' );
 		}
 
@@ -956,9 +975,19 @@ class EVF_Shortcode_Form {
 		&& evf()->task->is_valid_hash
 		&& absint( evf()->task->form_data['id'] ) === $form_id
 		) {
-			// Output success message if no redirection happened.
+			$query_args = base64_decode( $_GET['everest_forms_return'] ); // phpcs:ignore
+			parse_str( $query_args, $query_arg );
+			$message        = isset( $form_data['settings']['successful_form_submission_message'] ) ? $form_data['settings']['successful_form_submission_message'] : esc_html__( 'Thanks for contacting us! We will be in touch with you shortly.', 'everest-forms' );
+			$pdf_submission = isset( $form_data['settings']['pdf_submission']['enable_pdf_submission'] ) && 0 !== $form_data['settings']['pdf_submission']['enable_pdf_submission'] ? $form_data['settings']['pdf_submission'] : '';
+			if ( defined( 'EVF_PDF_SUBMISSION_VERSION' ) && ( 'yes' === get_option( 'everest_forms_pdf_download_after_submit', 'no' ) || ( isset( $pdf_submission['everest_forms_pdf_download_after_submit'] ) && 'yes' === $pdf_submission['everest_forms_pdf_download_after_submit'] ) ) ) {
+				global $__everest_form_id;
+				global $__everest_form_entry_id;
+				$__everest_form_id       = $form_id;
+				$__everest_form_entry_id = isset( $query_arg['entry_id'] ) ? $query_arg['entry_id'] : 0;
+			}
+
 			if ( 'same' === $form_data['settings']['redirect_to'] ) {
-				evf_add_notice( isset( $form_data['settings']['successful_form_submission_message'] ) ? $form_data['settings']['successful_form_submission_message'] : esc_html__( 'Thanks for contacting us! We will be in touch with you shortly.', 'everest-forms' ), 'success' );
+				evf_add_notice( $message, 'success' );
 			}
 
 			do_action( 'everest_forms_frontend_output_success', evf()->task->form_data, evf()->task->form_fields, evf()->task->entry_id );
@@ -1135,8 +1164,108 @@ class EVF_Shortcode_Form {
 	 *  @return $url
 	 */
 	public static function evf_recaptcha_language( $url ) {
-
 		return esc_url_raw( add_query_arg( array( 'hl' => get_option( 'everest_forms_recaptcha_recaptcha_language', 'en-GB' ) ), $url ) );
+	}
 
+	/**
+	 * Adds custom CSS and JavaScript code.
+	 *
+	 * @param int $form_id Form ID.
+	 * @since 2.0.2
+	 * @return void
+	 */
+	public static function add_custom_css_js( $form_id ) {
+		$form_id = absint( $form_id );
+		if ( $form_id <= 0 ) {
+			return;
+		}
+
+		$form = evf()->form->get( $form_id );
+		// Check the form_data exist or not.
+		if ( ! $form ) {
+			return;
+		}
+
+		$hook = false;
+
+		if ( ! did_action( 'wp_head' ) ) {
+			$hook = 'wp_head';
+		} elseif ( ! did_action( 'wp_footer' ) ) {
+			$hook = 'wp_footer';
+		}
+
+		$form_data = apply_filters( 'everest_forms_frontend_form_data', evf_decode( $form->post_content ) );
+		$settings  = isset( $form_data['settings'] ) ? $form_data['settings'] : array();
+
+		if ( isset( $settings['evf-enable-custom-css'] ) && evf_string_to_bool( $settings['evf-enable-custom-css'] ) ) {
+			$custom_css = isset( $settings['evf-custom-css'] ) ? $settings['evf-custom-css'] : '';
+			$custom_css = preg_match( '#</?\w+#', $custom_css ) ? '' : $custom_css;
+			if ( ! empty( $custom_css ) ) {
+				if ( $hook ) {
+					add_action(
+						$hook,
+						function () use ( $custom_css, $form_id ) {
+							?>
+							<style id="<?php echo esc_attr( 'evf-custom-css-' . $form_id ); ?>">
+								<?php echo esc_attr( $custom_css ); ?>
+							</style>
+							<?php
+						}
+					);
+				} else {
+					?>
+					<style id="<?php echo esc_attr( 'evf-custom-css-' . $form_id ); ?>">
+						<?php echo esc_attr( $custom_css ); ?>
+					</style>
+					<?php
+				}
+			}
+		}
+
+		if ( isset( $settings['evf-enable-custom-js'] ) && evf_string_to_bool( $settings['evf-enable-custom-js'] ) ) {
+			$custom_js = isset( $settings['evf-custom-js'] ) ? wp_specialchars_decode( wp_kses_decode_entities( $settings['evf-custom-js'] ) ) : '';
+			if ( ! empty( $custom_js ) ) {
+				$custom_js = sprintf(
+					'( function( $ ) {
+						$(document).ready( function() {
+							try {
+								%s
+							}
+							catch( err ) {}
+						});
+					})( jQuery )',
+					$custom_js
+				);
+
+				wp_register_script(
+					'evf-custom',
+					'',
+					array( 'jquery' ),
+					EVF_VERSION,
+					true
+				);
+
+				wp_add_inline_script( 'evf-custom', $custom_js );
+				wp_enqueue_script( 'evf-custom' );
+			}
+		}
+	}
+
+	/**
+	 * Function to enable the minimum form submission waiting time.
+	 *
+	 * @since 3.0.2
+	 *
+	 * @param array $form_data Form Data.
+	 */
+	public static function evf_form_submission_waiting_time( $form_data ) {
+		$form_submission_waiting_time_enable = isset( $form_data['settings']['form_submission_min_waiting_time'] ) ? $form_data['settings']['form_submission_min_waiting_time'] : '';
+		$submission_duration                 = isset( $form_data['settings']['form_submission_min_waiting_time_input'] ) ? $form_data['settings']['form_submission_min_waiting_time_input'] : '';
+
+		if ( '1' === $form_submission_waiting_time_enable ) {
+			echo "<input type='hidden' id='evf_submission_start_time' name='evf_submission_start_time'/>";
+		} else {
+			return '';
+		}
 	}
 }

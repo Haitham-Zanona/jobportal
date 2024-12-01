@@ -10,7 +10,7 @@
 get_header();
 ?>
 
-	<div id="primary" class="content-area">
+	<main id="zak-primary" class="zak-primary">
 		<?php echo apply_filters( 'zakra_after_primary_start_filter', false ); // WPCS: XSS OK. ?>
 
 		<?php
@@ -30,7 +30,7 @@ get_header();
 		?>
 
 		<?php echo apply_filters( 'zakra_after_primary_end_filter', false ); // // WPCS: XSS OK. ?>
-	</div><!-- #primary -->
+	</main><!-- /.zak-primary -->
 
 <?php
 get_sidebar();

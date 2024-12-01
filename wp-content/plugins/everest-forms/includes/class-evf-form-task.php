@@ -61,6 +61,10 @@ class EVF_Form_Task {
 	public function __construct() {
 		add_action( 'wp', array( $this, 'listen_task' ) );
 		add_filter( 'everest_forms_field_properties', array( $this, 'load_previous_field_value' ), 99, 3 );
+		add_action( 'everest_forms_complete_entry_save', array( $this, 'update_slot_booking_value' ), 10, 5 );
+		add_action( 'everest_forms_complete_entry_save', array( $this, 'evf_set_approval_status' ), 10, 2 );
+		add_action( 'admin_init', array( $this, 'evf_admin_approve_entry' ), 10, 2 );
+		add_action( 'admin_init', array( $this, 'evf_admin_deny_entry' ) );
 	}
 
 	/**
@@ -89,7 +93,7 @@ class EVF_Form_Task {
 
 		$settings        = $this->form_data['settings'];
 		$success_message = isset( $settings['successful_form_submission_message'] ) ? $settings['successful_form_submission_message'] : __( 'Thanks for contacting us! We will be in touch with you shortly.', 'everest-forms' );
-			// Send 400 Bad Request when there are errors.
+		// Send 400 Bad Request when there are errors.
 		if ( empty( $this->errors[ $form_id ] ) ) {
 			wp_send_json(
 				array(
@@ -112,7 +116,6 @@ class EVF_Form_Task {
 			),
 			400
 		);
-
 	}
 
 	/**
@@ -154,6 +157,17 @@ class EVF_Form_Task {
 				return $this->errors;
 			}
 
+			// Check if the form is enabled or not.
+			$form_enabled = evf_decode( $form->post_content );
+			if ( isset( $form_enabled['form_enabled'] ) && ! $form_enabled['form_enabled'] ) {
+				$this->errors[ $form_id ]['header'] = esc_html__( 'This form is disabled.', 'everest-forms' );
+				$logger->error(
+					$this->errors[ $form_id ]['header'],
+					array( 'source' => 'form-submission' )
+				);
+				return $this->errors;
+			}
+
 			// Formatted form data for hooks.
 			$this->form_data = apply_filters( 'everest_forms_process_before_form_data', evf_decode( $form->post_content ), $entry );
 
@@ -173,7 +187,7 @@ class EVF_Form_Task {
 			do_action( "everest_forms_process_before_{$form_id}", $entry, $this->form_data );
 
 			$ajax_form_submission = isset( $this->form_data['settings']['ajax_form_submission'] ) ? $this->form_data['settings']['ajax_form_submission'] : 0;
-			if ( isset( $this->form_data['payments']['stripe']['enable_stripe'] ) && '1' === $this->form_data['payments']['stripe']['enable_stripe'] ) {
+			if ( ( isset( $this->form_data['payments']['stripe']['enable_stripe'] ) && '1' === $this->form_data['payments']['stripe']['enable_stripe'] ) || ( isset( $this->form_data['payments']['square']['enable_square'] ) && '1' === $this->form_data['payments']['square']['enable_square'] ) ) {
 				$ajax_form_submission = '1';
 			}
 			if ( '1' === $ajax_form_submission ) {
@@ -194,7 +208,7 @@ class EVF_Form_Task {
 						$field_submit = isset( $field_submit['signature_image'] ) ? $field_submit['signature_image'] : '';
 					}
 
-					$exclude = array( 'title', 'html', 'captcha', 'image-upload', 'file-upload', 'divider', 'reset' );
+					$exclude = array( 'title', 'html', 'captcha', 'image-upload', 'file-upload', 'divider', 'reset', 'recaptcha', 'hcaptcha', 'turnstile' );
 
 					if ( ! in_array( $field_type, $exclude, true ) ) {
 
@@ -270,54 +284,91 @@ class EVF_Form_Task {
 				} elseif ( 'hcaptcha' === $recaptcha_type ) {
 					$site_key   = get_option( 'everest_forms_recaptcha_hcaptcha_site_key' );
 					$secret_key = get_option( 'everest_forms_recaptcha_hcaptcha_secret_key' );
+				} elseif ( 'turnstile' === $recaptcha_type ) {
+					$site_key   = get_option( 'everest_forms_recaptcha_turnstile_site_key' );
+					$secret_key = get_option( 'everest_forms_recaptcha_turnstile_secret_key' );
+					$theme_mode = get_option( 'everest_forms_recaptcha_turnstile_theme' );
 				}
+				$recaptcha_verified = false;
+				foreach ( (array) $this->form_data['form_fields'] as $field ) {
+					$field_type = isset( $field['type'] ) ? $field['type'] : '';
+					$captcha    = array( 'recaptcha', 'hcaptcha', 'turnstile' );
+					if ( ! empty( $site_key ) && ! empty( $secret_key ) && isset( $this->form_data['settings']['recaptcha_support'] ) && '1' === $this->form_data['settings']['recaptcha_support'] &&
+					! isset( $_POST['__amp_form_verify'] ) && ( 'v3' === $recaptcha_type || ! evf_is_amp() ) || ( ! empty( $site_key ) && ! empty( $secret_key ) ) && in_array( $field_type, $captcha, true ) ) {
 
-				if ( ! empty( $site_key ) && ! empty( $secret_key ) && isset( $this->form_data['settings']['recaptcha_support'] ) && '1' === $this->form_data['settings']['recaptcha_support'] &&
-				! isset( $_POST['__amp_form_verify'] ) && ( 'v3' === $recaptcha_type || ! evf_is_amp() ) ) {
-					if ( 'hcaptcha' === $recaptcha_type ) {
-						$error = esc_html__( 'hCaptcha verification failed, please try again later.', 'everest-forms' );
-					} else {
-						$error = esc_html__( 'Google reCAPTCHA verification failed, please try again later.', 'everest-forms' );
-					}
-
-					$logger->error(
-						$error,
-						array( 'source' => 'Google reCAPTCHA' )
-					);
-
-					$token = ! empty( $_POST['g-recaptcha-response'] ) ? evf_clean( wp_unslash( $_POST['g-recaptcha-response'] ) ) : false;
-
-					if ( 'v3' === $recaptcha_type ) {
-						$token = ! empty( $_POST['everest_forms']['recaptcha'] ) ? evf_clean( wp_unslash( $_POST['everest_forms']['recaptcha'] ) ) : false;
-					}
-					if ( 'hcaptcha' === $recaptcha_type ) {
-						$token        = ! empty( $_POST['h-captcha-response'] ) ? evf_clean( wp_unslash( $_POST['h-captcha-response'] ) ) : false;
-						$raw_response = wp_safe_remote_get( 'https://hcaptcha.com/siteverify?secret=' . $secret_key . '&response=' . $token );
-					} else {
-						$raw_response = wp_safe_remote_get( 'https://www.google.com/recaptcha/api/siteverify?secret=' . $secret_key . '&response=' . $token );
-					}
-
-					if ( ! is_wp_error( $raw_response ) ) {
-						$response = json_decode( wp_remote_retrieve_body( $raw_response ) );
-						// Check reCAPTCHA response.
-						if ( empty( $response->success ) || ( 'v3' === $recaptcha_type && $response->score <= get_option( 'everest_forms_recaptcha_v3_threshold_score', apply_filters( 'everest_forms_recaptcha_v3_threshold', '0.5' ) ) ) ) {
-							if ( 'v3' === $recaptcha_type ) {
-								if ( isset( $response->score ) ) {
-									$error .= ' (' . esc_html( $response->score ) . ')';
-								}
-							}
-							$this->errors[ $form_id ]['header'] = $error;
-							$logger->error(
-								$error,
-								array( 'source' => 'Google reCAPTCHA' )
-							);
-							return $this->errors;
+						if ( 'hcaptcha' === $recaptcha_type ) {
+							$error = esc_html__( 'hCaptcha verification failed, please try again later.', 'everest-forms' );
+						} elseif ( 'turnstile' === $recaptcha_type ) {
+							$error = esc_html__( 'Cloudflare Turnstile verification failed, please try again later.', 'everest-forms' );
+						} else {
+							$error = esc_html__( 'Google reCAPTCHA verification failed, please try again later.', 'everest-forms' );
 						}
+
+						$logger->error(
+							$error,
+							array( 'source' => 'Google reCAPTCHA' )
+						);
+
+						$token = ! empty( $_POST['g-recaptcha-response'] ) ? evf_clean( wp_unslash( $_POST['g-recaptcha-response'] ) ) : false;
+
+						if ( 'v3' === $recaptcha_type ) {
+							$token = ! empty( $_POST['everest_forms']['recaptcha'] ) ? evf_clean( wp_unslash( $_POST['everest_forms']['recaptcha'] ) ) : false;
+						}
+						if ( 'hcaptcha' === $recaptcha_type ) {
+							$token        = ! empty( $_POST['h-captcha-response'] ) ? evf_clean( wp_unslash( $_POST['h-captcha-response'] ) ) : false;
+							$raw_response = wp_safe_remote_get( 'https://hcaptcha.com/siteverify?secret=' . $secret_key . '&response=' . $token );
+						} elseif ( 'turnstile' === $recaptcha_type ) {
+							$token        = ! empty( $_POST['cf-turnstile-response'] ) ? evf_clean( wp_unslash( $_POST['cf-turnstile-response'] ) ) : false;
+							$url          = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+							$params       = array(
+								'method' => 'POST',
+								'body'   => array(
+									'secret'   => $secret_key,
+									'response' => $token,
+								),
+							);
+							$raw_response = wp_safe_remote_post( $url, $params );
+						} else {
+							$raw_response = wp_safe_remote_get( 'https://www.google.com/recaptcha/api/siteverify?secret=' . $secret_key . '&response=' . $token );
+						}
+
+						if ( ! is_wp_error( $raw_response ) ) {
+							$response = json_decode( wp_remote_retrieve_body( $raw_response ) );
+							// Check reCAPTCHA response.
+							if ( empty( $response->success ) || ( 'v3' === $recaptcha_type && $response->score <= get_option( 'everest_forms_recaptcha_v3_threshold_score', apply_filters( 'everest_forms_recaptcha_v3_threshold', '0.5' ) ) ) ) {
+								if ( 'v3' === $recaptcha_type ) {
+									if ( isset( $response->score ) ) {
+										$error .= ' (' . esc_html( $response->score ) . ')';
+									}
+								}
+								$this->errors[ $form_id ]['header'] = $error;
+								$logger->error(
+									$error,
+									array( 'source' => 'Google reCAPTCHA' )
+								);
+								return $this->errors;
+							}
+						}
+
+						$recaptcha_verified = true;
+						break;
 					}
 				}
 			}
 			// Initial error check.
 			$errors = apply_filters( 'everest_forms_process_initial_errors', $this->errors, $this->form_data );
+
+			// Minimum time to submit check.
+			$min_submit_time = $this->form_submission_waiting_time( $this->errors, $this->form_data );
+			if ( isset( $min_submit_time[ $form_id ]['header'] ) && ! empty( $min_submit_time ) ) {
+				$this->errors[ $form_id ]['header'] = $min_submit_time[ $form_id ]['header'];
+				$logger->error(
+					$min_submit_time[ $form_id ]['header'],
+					array( 'source' => 'Minimum time to submit' )
+				);
+				return $this->errors;
+			}
+
 			if ( isset( $_POST['__amp_form_verify'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 				if ( empty( $errors[ $form_id ] ) ) {
 					wp_send_json( array(), 200 );
@@ -391,6 +442,25 @@ class EVF_Form_Task {
 				return $this->errors;
 			}
 
+			/** Akismet anit-spam protection.
+			 * If spam - return early
+			 *
+			 * @since 2.4.0
+			 */
+			if ( $this->get_akismet_validate( $entry, $form_id ) ) {
+				$logger = evf_get_logger();
+				$logger->notice( sprintf( 'Spam entry for Form ID %d Response: %s', absint( $this->form_data['id'] ), evf_print_r( $entry, true ) ), array( 'source' => 'akismet' ) );
+
+				if ( isset( $this->form_data['settings']['akismet_protection_type'] ) && 'validation_failed' === $this->form_data['settings']['akismet_protection_type'] ) {
+
+					$akismet_message              = apply_filters( 'evf_akisment_validatation_error_message', sprintf( 'Akismet anti-spam verification failed, please try again later.', 'everest-forms' ) );
+					$errors[ $form_id ]['header'] = $akismet_message;
+					$this->errors                 = $errors;
+
+					return $this->errors;
+				}
+				$entry['evf_spam_status'] = 'spam';
+			}
 			// Pass the form created date into the form data.
 			$this->form_data['created'] = $form->post_date;
 
@@ -502,11 +572,29 @@ class EVF_Form_Task {
 			}
 		}
 
-		$settings       = $this->form_data['settings'];
-		$message        = isset( $settings['successful_form_submission_message'] ) ? $settings['successful_form_submission_message'] : __( 'Thanks for contacting us! We will be in touch with you shortly.', 'everest-forms' );
-		$pdf_submission = isset( $settings['pdf_submission']['enable_pdf_submission'] ) && 0 !== $settings['pdf_submission']['enable_pdf_submission'] ? $settings['pdf_submission'] : '';
+		$settings                  = $this->form_data['settings'];
+		$message                   = isset( $settings['successful_form_submission_message'] ) ? $settings['successful_form_submission_message'] : __( 'Thanks for contacting us! We will be in touch with you shortly.', 'everest-forms' );
+		$is_pdf_submission_enabled = isset( $settings['pdf_submission']['enable_pdf_submission'] ) && ( 'yes' === $settings['pdf_submission']['enable_pdf_submission'] || '1' === $settings['pdf_submission']['enable_pdf_submission'] );
+		$pdf_submission            = $is_pdf_submission_enabled ? $settings['pdf_submission'] : '';
 
-		if ( defined( 'EVF_PDF_SUBMISSION_VERSION' ) && ( 'yes' === get_option( 'everest_forms_pdf_download_after_submit', 'no' ) || ( isset( $pdf_submission['everest_forms_pdf_download_after_submit'] ) && 'yes' === $pdf_submission['everest_forms_pdf_download_after_submit'] ) ) ) {
+		$is_pdf_download_after_submit   = isset( $pdf_submission['everest_forms_pdf_download_after_submit'] ) && ( 'yes' === $pdf_submission['everest_forms_pdf_download_after_submit'] || '1' === $pdf_submission['everest_forms_pdf_download_after_submit'] );
+		$is_global_pdf_download_enabled = 'yes' === get_option( 'everest_forms_pdf_download_after_submit', 'no' ) || '1' === get_option( 'everest_forms_pdf_download_after_submit', 'no' );
+		$should_allow_pdf_download      = $is_pdf_submission_enabled ? $is_pdf_download_after_submit : $is_global_pdf_download_enabled;
+
+		$is_preview_confirmation = isset( $this->form_data['settings']['preview_confirmation'] ) ? $this->form_data['settings']['preview_confirmation'] : 0;
+
+		// show preview of form after submission.
+		if ( '1' === $is_preview_confirmation ) {
+			$preview_style = isset( $this->form_data['settings']['preview_confirmation_select'] ) ? $this->form_data['settings']['preview_confirmation_select'] : 'basic';
+			if ( '1' === $ajax_form_submission ) {
+				$response_data['is_preview_confirmation'] = $is_preview_confirmation;
+				$response_data['preview_confirmation']    = apply_filters( 'everest_forms_preview_confirmation', $this->form_data, $this->form_fields, $preview_style );
+			} else {
+				do_action( 'everest_forms_preview_confirmation', $this->form_data, $this->form_fields, $preview_style );
+			}
+		}
+
+		if ( defined( 'EVF_PDF_SUBMISSION_VERSION' ) && $should_allow_pdf_download ) {
 			global $__everest_form_id;
 			global $__everest_form_entry_id;
 			$__everest_form_id       = $form_id;
@@ -573,7 +661,7 @@ class EVF_Form_Task {
 			$response_data = apply_filters( 'everest_forms_after_success_ajax_message', $response_data, $this->form_data, $entry );
 			return $response_data;
 		} elseif ( ( 'same' === $this->form_data['settings']['redirect_to'] && empty( $submission_redirection_process ) ) || ( ! empty( $submission_redirection_process ) && 'same_page' == $submission_redirection_process['redirect_to'] ) ) {
-				evf_add_notice( $message, 'success' );
+			evf_add_notice( $message, 'success' );
 		}
 		$logger->info(
 			'Everest Forms After success Message.',
@@ -582,7 +670,6 @@ class EVF_Form_Task {
 
 		do_action( 'everest_forms_after_success_message', $this->form_data, $entry );
 		$this->entry_confirmation_redirect( $this->form_data );
-
 	}
 
 	/**
@@ -827,7 +914,7 @@ class EVF_Form_Task {
 			$form_data['settings']['email']                 = array();
 			$form_data['settings']['email']['connection_1'] = array( 'connection_name' => __( 'Admin Notification', 'everest-forms' ) );
 
-			$email_settings = array( 'evf_to_email', 'evf_from_name', 'evf_from_email', 'evf_reply_to', 'evf_email_subject', 'evf_email_message', 'attach_pdf_to_admin_email', 'show_header_in_attachment_pdf_file', 'conditional_logic_status', 'conditional_option', 'conditionals' );
+			$email_settings = array( 'evf_to_email', 'evf_from_name', 'evf_from_email', 'evf_reply_to', 'evf_email_subject', 'enable-ai-email-prompt', 'evf_email_message_prompt', 'evf_email_message', 'attach_pdf_to_admin_email', 'show_header_in_attachment_pdf_file', 'conditional_logic_status', 'conditional_option', 'conditionals' );
 			foreach ( $email_settings as $email_setting ) {
 				$form_data['settings']['email']['connection_1'][ $email_setting ] = isset( $old_email_data[ $email_setting ] ) ? $old_email_data[ $email_setting ] : '';
 			}
@@ -859,9 +946,13 @@ class EVF_Form_Task {
 			$email['sender_name']    = ! empty( $notification['evf_from_name'] ) ? $notification['evf_from_name'] : get_bloginfo( 'name' );
 			$email['sender_address'] = ! empty( $notification['evf_from_email'] ) ? $notification['evf_from_email'] : get_option( 'admin_email' );
 			$email['reply_to']       = ! empty( $notification['evf_reply_to'] ) ? $notification['evf_reply_to'] : $email['sender_address'];
-			$email['message']        = ! empty( $notification['evf_email_message'] ) ? evf_string_translation( $form_data['id'], 'evf_email_message', $notification['evf_email_message'] ) : '{all_fields}';
-			$email                   = apply_filters( 'everest_forms_entry_email_atts', $email, $fields, $entry, $form_data );
-			$attachment = '';
+			if ( ! empty( get_option( 'everest_forms_ai_api_key' ) ) ) { // phpcs:ignore
+				$email['message_ai_prompt'] = ! empty( $notification['evf_email_message_prompt'] ) ? $notification['evf_email_message_prompt'] : '';
+				$email['enable_ai_prompt']  = ! empty( $notification['enable_ai_email_prompt'] ) ? $notification['enable_ai_email_prompt'] : 0;
+			}
+			$email['message'] = ! empty( $notification['evf_email_message'] ) ? evf_string_translation( $form_data['id'], 'evf_email_message', $notification['evf_email_message'] ) : '{all_fields}';
+			$email            = apply_filters( 'everest_forms_entry_email_atts', $email, $fields, $entry, $form_data );
+			$attachment       = '';
 
 			// Create new email.
 			$emails = new EVF_Emails();
@@ -895,7 +986,10 @@ class EVF_Form_Task {
 				$emails->send( trim( $address ), $email['subject'], $email['message'], '', $connection_id );
 			}
 
-		endforeach;
+			endforeach;
+		if ( isset( $attachment ) ) {
+			do_action( 'everest_forms_remove_attachments_after_send_email', $attachment, $fields, $form_data, 'entry-email', $connection_id, $entry_id );
+		}
 	}
 
 	/**
@@ -922,13 +1016,21 @@ class EVF_Form_Task {
 
 		do_action( 'everest_forms_process_entry_save', $fields, $entry, $form_id, $form_data );
 
-		$fields      = apply_filters( 'everest_forms_entry_save_data', $fields, $entry, $form_data );
-		$browser     = evf_get_browser();
-		$user_ip     = evf_get_ip_address();
-		$user_device = evf_get_user_device();
-		$user_agent  = $browser['name'] . '/' . $browser['platform'] . '/' . $user_device;
-		$referer     = ! empty( $_SERVER['HTTP_REFERER'] ) ? esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) ) : '';
-		$entry_id    = false;
+		$fields                          = apply_filters( 'everest_forms_entry_save_data', $fields, $entry, $form_data );
+		$browser                         = evf_get_browser();
+		$user_ip                         = evf_get_ip_address();
+		$user_device                     = evf_get_user_device();
+		$user_agent                      = $browser['name'] . '/' . $browser['platform'] . '/' . $user_device;
+		$referer                         = ! empty( $_SERVER['HTTP_REFERER'] ) ? esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) ) : '';
+		$entry_id                        = false;
+		$status                          = isset( $entry['evf_spam_status'] ) ? $entry['evf_spam_status'] : 'publish';
+		$admin_approval_entries          = get_option( 'everest_forms_admin_approval_entries_enable', 'no' );
+		$settings                        = isset( $form_data['settings'] ) ? $form_data['settings'] : array();
+		$evf_form_admin_approval_entries = isset( $settings['enable_admin_approval_entries'] ) ? $settings['enable_admin_approval_entries'] : '0';
+
+		if ( 'yes' === $admin_approval_entries && '1' === $evf_form_admin_approval_entries ) {
+			$status = 'pending';
+		}
 
 		// GDPR enhancements - If user details are disabled globally discard the IP and UA.
 		if ( 'yes' === get_option( 'everest_forms_disable_user_details' ) ) {
@@ -943,7 +1045,7 @@ class EVF_Form_Task {
 				'user_id'         => get_current_user_id(),
 				'user_device'     => sanitize_text_field( $user_agent ),
 				'user_ip_address' => sanitize_text_field( $user_ip ),
-				'status'          => 'publish',
+				'status'          => $status,
 				'referer'         => $referer,
 				'fields'          => wp_json_encode( $fields ),
 				'date_created'    => current_time( 'mysql', true ),
@@ -1022,6 +1124,60 @@ class EVF_Form_Task {
 	}
 
 	/**
+	 * Insert or update the slot booking data.
+	 *
+	 * @param int   $entry_id Entry id.
+	 * @param array $fields    List of form fields.
+	 * @param array $entry     User submitted data.
+	 * @param int   $form_id   Form ID.
+	 * @param array $form_data Prepared form settings.
+	 */
+	public function update_slot_booking_value( $entry_id, $fields, $entry, $form_id, $form_data ) {
+		$new_slot_booking_field_meta_key_list = array();
+		$time_interval                        = 0;
+		foreach ( $form_data['form_fields'] as $field ) {
+			if ( ( 'date-time' === $field['type'] ) && isset( $field['slot_booking_advanced'] ) && evf_string_to_bool( $field['slot_booking_advanced'] ) ) {
+				$new_slot_booking_field_meta_key_list[ $field['meta-key'] ] = array(
+					$field['datetime_format'],
+					$field['date_format'],
+					$field['date_mode'],
+				);
+				$time_interval = $field['time_interval'];
+			}
+		}
+
+		foreach ( $fields as $key => $value ) {
+			if ( array_key_exists( $value['meta_key'], $new_slot_booking_field_meta_key_list ) ) {
+				$new_value       = $value['value'];
+				$datetime_format = $new_slot_booking_field_meta_key_list[ $value['meta_key'] ][0];
+				$date_format     = $new_slot_booking_field_meta_key_list[ $value['meta_key'] ][1];
+				$mode            = $new_slot_booking_field_meta_key_list[ $value['meta_key'] ][2];
+				$datetime_arr    = parse_datetime_values( $new_value, $datetime_format, $date_format, $mode, $time_interval, $entry_id );
+			}
+		}
+		if ( ! empty( $datetime_arr ) ) {
+			$get_booked_slot = get_option( 'evf_booked_slot', array() );
+			$new_booked_slot = array( $form_id => $datetime_arr );
+
+			if ( empty( $get_booked_slot ) ) {
+				$all_booked_slot = maybe_serialize( $new_booked_slot );
+			} else {
+				$unserialized_booked_slot = maybe_unserialize( $get_booked_slot );
+
+				if ( array_key_exists( $form_id, $unserialized_booked_slot ) ) {
+					$booked_slot     = $unserialized_booked_slot[ $form_id ];
+					$booked_slot     = (array) $booked_slot + $datetime_arr;
+					$new_booked_slot = array( $form_id => $booked_slot );
+				}
+
+				$all_booked_slot = maybe_serialize( array_replace( $unserialized_booked_slot, $new_booked_slot ) );
+			}
+
+			update_option( 'evf_booked_slot', $all_booked_slot );
+		}
+	}
+
+	/**
 	 * Load Previous Field Value.
 	 *
 	 * @param string $properties Value.
@@ -1062,11 +1218,275 @@ class EVF_Form_Task {
 					}
 				}
 			}
-		} else {
-			if ( ! is_array( $data ) ) {
-				$properties['inputs']['primary']['attr']['value'] = esc_attr( $data );
-			}
+		} elseif ( ! is_array( $data ) ) {
+			$properties['inputs']['primary']['attr']['value'] = esc_attr( $data );
 		}
 		return $properties;
+	}
+
+	/**
+	 * Check if a form entry should be validated by Akismet for potential spam.
+	 *
+	 * This function checks whether the Akismet plugin is installed and configured, and if the Akismet
+	 * validation option is enabled for a specific form. If validation is enabled, it prepares the
+	 * necessary data for the validation request and sends it to Akismet's 'comment-check' endpoint.
+	 *
+	 * @param array  $entry The form entry data to validate.
+	 * @param string $form_id (Optional) The identifier of the form.
+	 *
+	 * @return bool
+	 *   - true if the form entry is potentially spam according to Akismet.
+	 *   - false if Akismet validation is not enabled, the plugin is not properly configured, or the entry is not considered spam.
+	 */
+	public function get_akismet_validate( $entry, $form_id = '' ) {
+
+		if ( ! file_exists( WP_PLUGIN_DIR . '/akismet/akismet.php' ) ) {
+			return false;
+		}
+
+		if ( ! evf_is_akismet_configured() ) {
+			return false;
+		}
+
+		if ( isset( $this->form_data['settings']['akismet'] ) && '1' === $this->form_data['settings']['akismet'] ) {
+			$entry_data = $this->get_entry_data_for_akismet( $this->form_data['form_fields'], $entry );
+
+			$entry_data = apply_filters( 'evf_entry_akismet_entry_data', $entry_data, $entry, $this->form_data );
+
+			$request = array(
+				'blog'                 => get_option( 'home' ),
+				'user_ip'              => evf_get_ip_address(),
+				'user_agent'           => isset( $_SERVER['HTTP_USER_AGENT'] ) ? wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) : null, // phpcs:ignore
+				'referrer'             => wp_get_referer() ? wp_get_referer() : null,
+				'permalink'            => evf_current_url(),
+				'comment_type'         => 'contact-form',
+				'comment_author'       => isset( $entry_data['name'] ) ? $entry_data['name'] : '',
+				'comment_author_email' => isset( $entry_data['email'] ) ? $entry_data['email'] : '',
+				'comment_author_url'   => isset( $entry_data['url'] ) ? $entry_data['url'] : '',
+				'comment_content'      => isset( $entry_data['content'] ) ? $entry_data['content'] : '',
+				'blog_lang'            => get_locale(),
+				'blog_charset'         => get_bloginfo( 'charset' ),
+				'honypot_field_name'   => 'everest_forms[hp]',
+			);
+
+			$request = apply_filters( 'evf_akismet_request_data', $request, $this->form_data, $entry, $form_id );
+
+			$response = Akismet::http_post( build_query( $request ), 'comment-check' );
+
+			return ! empty( $response ) && isset( $response[1] ) && 'true' === trim( $response[1] );
+		}
+
+		return false;
+	}
+
+	/**
+	 * Get the list of field types that are allowed to be sent to Akismet.
+	 *
+	 * @since 1.7.6
+	 *
+	 * @return array List of field types that are allowed to be sent to Akismet
+	 */
+	private function get_field_type_allowlist_for_akisment() {
+
+		$field_type_allowlist = array(
+			'first-name',
+			'last-name',
+			'text',
+			'textarea',
+			'email',
+			'phone',
+			'address',
+			'url',
+			'wysiwyg',
+		);
+
+		/**
+		 * Filters the field types that are allowed to be sent to Akismet.
+		 *
+		 * @since 2.4.0
+		 *
+		 * @param array $field_type_allowlist Field types allowed to be sent to Akismet.
+		 */
+		return (array) apply_filters( 'evf_forms_akismet_get_field_type_allowlist', $field_type_allowlist );
+	}
+
+	/**
+	 * Get the entry data to be sent to Akismet.
+	 *
+	 * @since 2.4.0
+	 *
+	 * @param array $fields Field data for the current form.
+	 * @param array $entry  Entry data for the current entry.
+	 *
+	 * @return array $entry_data Entry data to be sent to Akismet.
+	 */
+	private function get_entry_data_for_akismet( $fields, $entry ) {
+		$field_type_allowlist = $this->get_field_type_allowlist_for_akisment();
+		$entry_data           = array();
+		$entry_content        = array();
+
+		foreach ( $fields as $key => $field ) {
+			$field_type = $field['type'];
+
+			if ( ! in_array( $field_type, $field_type_allowlist, true ) ) {
+				continue;
+			}
+			if ( ! isset( $entry['form_fields'][ $key ] ) ) {
+				continue;
+			}
+			$field_content = is_array( $entry['form_fields'][ $key ] ) ? implode( ' ', $entry['form_fields'][ $key ] ) : $entry['form_fields'][ $key ];
+
+			if ( ! isset( $entry_data[ $field_type ] ) && in_array( $field_type, array( 'first-name', 'last-name', 'email', 'url' ), true ) ) {
+				if ( 'first-name' === $field_type ) {
+					$entry_data['name'] = isset( $entry_data['name'] ) ? "$field_content " . $entry_data['name'] : $field_content;
+					continue;
+				} elseif ( 'last-name' === $field_type ) {
+					$entry_data['name'] = isset( $entry_data['name'] ) ? $entry_data['name'] . " $field_content" : $field_content;
+					continue;
+				}
+				$entry_data[ $field_type ] = $field_content;
+				continue;
+			}
+
+			$entry_content[] = $field_content;
+		}
+
+		$entry_data['content'] = implode( ' ', $entry_content );
+
+		return $entry_data;
+	}
+
+	/**
+	 * Verify the token and approve the entry if the token matches.
+	 *
+	 * @since 2.0.9
+	 */
+	public static function evf_admin_approve_entry() {
+		if ( ! isset( $_GET['evf_admin_approval_entry_token'] ) || empty( $_GET['evf_admin_approval_entry_token'] ) ) {
+			return;
+		}
+
+		if ( current_user_can( 'edit_users' ) ) {
+			global $wpdb;
+			$evf_admin_approve_entry_token_raw = sanitize_text_field( wp_unslash( $_GET['evf_admin_approval_entry_token'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+
+			$evf_admin_approval_entry_enable = get_option( 'everest_forms_admin_approval_entries_enable', 'no' );
+			$evf_admin_form_id               = isset( $_GET['form_id'] ) ? absint( $_GET['form_id'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification
+			$evf_admin_entry_id              = isset( $_GET['entry_id'] ) ? absint( $_GET['entry_id'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification
+			$evf_entry_redirect_url          = admin_url() . 'admin.php?page=evf-entries&form_id=' . $evf_admin_form_id . '&view-entry=' . $evf_admin_entry_id;
+			$evf_admin_entry_saved_token     = get_option( 'everest_forms_admin_entry_approval_token', array() );
+
+			if ( 'yes' === $evf_admin_approval_entry_enable ) {
+				$evf_admin_approval_entry_token = isset( $_GET['evf_admin_approval_entry_token'] ) ? sanitize_text_field( wp_unslash( $_GET['evf_admin_approval_entry_token'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+				if ( in_array( $evf_admin_approve_entry_token_raw, $evf_admin_entry_saved_token ) ) {
+					$evf_admin_approval_approved = $wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->prefix}evf_entries SET status = %s WHERE entry_id = %s ", 'publish', $evf_admin_entry_id ) );
+					wp_redirect( $evf_entry_redirect_url );
+				}
+			}
+		}
+	}
+
+	/**
+	 * Verify the token and deny the entry if the token matches.
+	 *
+	 * @since 2.0.9
+	 */
+	public static function evf_admin_deny_entry() {
+		if ( ! isset( $_GET['evf_admin_denial_entry_token'] ) || empty( $_GET['evf_admin_denial_entry_token'] ) ) {
+			return;
+		}
+
+		if ( current_user_can( 'edit_users' ) ) {
+			global $wpdb;
+
+			$evf_admin_approve_entry_token_raw = isset( $_GET['evf_admin_denial_entry_token'] ) ? sanitize_text_field( wp_unslash( $_GET['evf_admin_denial_entry_token'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+			$evf_admin_approval_entry_enable   = get_option( 'everest_forms_admin_approval_entries_enable', 'no' );
+			$evf_admin_form_id                 = isset( $_GET['form_id'] ) ? absint( $_GET['form_id'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification
+			$evf_admin_entry_id                = isset( $_GET['entry_id'] ) ? absint( $_GET['entry_id'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification
+			$evf_entry_redirect_url            = admin_url() . 'admin.php?page=evf-entries&form_id=' . $evf_admin_form_id . '&view-entry=' . $evf_admin_entry_id;
+			$evf_admin_entry_saved_token       = get_option( 'everest_forms_admin_entry_approval_token', array() );
+
+			if ( 'yes' === $evf_admin_approval_entry_enable ) {
+
+				$evf_admin_denial_entry_token = isset( $_GET['evf_admin_denial_entry_token'] ) ? sanitize_text_field( wp_unslash( $_GET['evf_admin_denial_entry_token'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+				if ( in_array( $evf_admin_approve_entry_token_raw, $evf_admin_entry_saved_token ) ) {
+					$evf_admin_approval_denied = $wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->prefix}evf_entries SET status = %s WHERE entry_id = %s ", 'denied', $evf_admin_entry_id ) );
+					wp_redirect( $evf_entry_redirect_url );
+				}
+			}
+		}
+	}
+
+	/**
+	 * Set the entry approval token of the entry and update it to the options table in database.
+	 *
+	 * @param int   $entry_id Entry ID.
+	 * @param array $form_data Form field data.
+	 *
+	 * @since 2.0.9
+	 */
+	public function evf_set_approval_status( $entry_id, $form_data ) {
+		$evf_admin_approval_token_list  = array();
+		$form_id                        = isset( $form_data['id'] ) ? $form_id['id'] : '';
+		$evf_admin_entry_enable         = get_option( 'everest_forms_admin_approval_entries_enable', 'no' );
+		$evf_admin_entry_approval_token = get_option( 'everest_forms_admin_entry_approval_token', array() );
+		$evf_approval_key               = 'approval_token_' . $entry_id;
+
+		// Checks if admin approval entry is enabled.
+		if ( ! isset( $evf_admin_entry_enable ) ) {
+			return;
+		} else {
+			$token              = evf_get_random_string( 20 );
+			$evf_approval_token = array(
+				$evf_approval_key => $token,
+			);
+			$evf_new_token      = array_merge( $evf_admin_entry_approval_token, $evf_approval_token );
+			update_option( 'everest_forms_admin_entry_approval_token', $evf_new_token );
+		}
+	}
+
+	/**
+	 * Prevents form submission before the specified duration.
+	 *
+	 * @param array  $errors    Form submit errors.
+	 * @param object $form_data   An object containing settings for the form.
+	 */
+	public function form_submission_waiting_time( $errors, $form_data ) {
+		$form_submission_waiting_time_enable = isset( $form_data['settings']['form_submission_min_waiting_time'] ) ? $form_data['settings']['form_submission_min_waiting_time'] : '';
+		$submission_duration                 = isset( $form_data['settings']['form_submission_min_waiting_time_input'] ) ? $form_data['settings']['form_submission_min_waiting_time_input'] : '';
+
+		if ( isset( $form_submission_waiting_time_enable ) && '1' === $form_submission_waiting_time_enable && 0 <= absint( $submission_duration ) ) {
+			$evf_submission_start_time = isset( $_POST['evf_submission_start_time'] ) ? sanitize_text_field( wp_unslash( $_POST['evf_submission_start_time'] ) ) : ''; //phpcs:ignore WordPress.Security.NonceVerification
+			$atts                      = $form_data['id'];
+			$submission_time           = time() * 1000;
+
+			if ( $submission_duration <= 0 ) {
+				$submission_duration = 1;
+			}
+			$waiting_time = absint( $submission_time ) - absint( $evf_submission_start_time );
+			$form_id      = ! empty( $form_data['id'] ) ? $form_data['id'] : 0;
+
+			if ( absint( $submission_time ) - absint( $evf_submission_start_time ) <= absint( $submission_duration ) * 1000 ) {
+				/**
+				 * Filter to modify the waiting time message content.
+				 *
+				 * @since 3.0.2
+				 */
+				$form_submission_err_msg = apply_filters(
+					'everest_forms_minimum_waiting_time_form_submission',
+					sprintf(
+						"%s <span id='evf_submission_duration' data-duration='%s'>%s</span> %s",
+						esc_html__( 'Please wait', 'everest-forms' ),
+						$submission_duration,
+						$submission_duration,
+						esc_html__( 'seconds, security checkup is being executed.', 'everest-forms' )
+					)
+				);
+
+				$errors[ $form_id ]['header'] = $form_submission_err_msg;
+			}
+
+			return $errors;
+		}
 	}
 }

@@ -19,6 +19,7 @@ class EVF_Admin_Entries {
 	public function __construct() {
 		add_action( 'admin_init', array( $this, 'actions' ) );
 		add_filter( 'heartbeat_received', array( $this, 'check_new_entries' ), 10, 3 );
+		add_action( 'everest_forms_after_delete_entries', array( $this, 'evf_delete_booked_slot' ), 10, 2 );
 	}
 
 	/**
@@ -90,7 +91,7 @@ class EVF_Admin_Entries {
 							?>
 						</form>
 					<?php else : ?>
-						<a class="everest-forms-BlankState-cta button-primary button" target="_blank" href="https://docs.wpeverest.com/docs/everest-forms/entry-management/?utm_source=blankslate&utm_medium=entry&utm_content=entriesdoc&utm_campaign=everestformplugin"><?php esc_html_e( 'Learn more about entries', 'everest-forms' ); ?></a>
+						<a class="everest-forms-BlankState-cta button-primary button" target="_blank" href="https://docs.everestforms.net/guide-to-form-entries/?utm_source=entries&utm_medium=learn-more-about-entries-btn&utm_campaign=<?php echo esc_attr( evf()->utm_campaign ); ?>"><?php esc_html_e( 'Learn more about entries', 'everest-forms' ); ?></a>
 						<a class="everest-forms-BlankState-cta button" href="<?php echo esc_url( admin_url( 'admin.php?page=evf-builder&create-form=1' ) ); ?>"><?php esc_html_e( 'Create your first form!', 'everest-forms' ); ?></a>
 					<?php endif; ?>
 					<style type="text/css">#posts-filter .wp-list-table, #posts-filter .tablenav.top, .tablenav.bottom .actions, .wrap .subsubsub { display: none; }</style>
@@ -147,7 +148,6 @@ class EVF_Admin_Entries {
 				self::update_status( $entry_id, 'trash' );
 			}
 		}
-
 		wp_safe_redirect(
 			esc_url_raw(
 				add_query_arg(
@@ -204,7 +204,7 @@ class EVF_Admin_Entries {
 			$entry_id = absint( $_GET['delete'] ); // phpcs:ignore WordPress.Security.NonceVerification
 
 			if ( $entry_id ) {
-				self::remove_entry( $entry_id );
+				self::remove_entry( $entry_id, $form_id );
 			}
 		}
 
@@ -239,8 +239,8 @@ class EVF_Admin_Entries {
 				$entry_ids = array_map( 'intval', wp_list_pluck( $results, 'entry_id' ) );
 
 				foreach ( $entry_ids as $entry_id ) {
-					if ( self::remove_entry( $entry_id ) ) {
-						$count ++;
+					if ( self::remove_entry( $entry_id, $form_id ) ) {
+						++$count;
 					}
 				}
 
@@ -281,9 +281,10 @@ class EVF_Admin_Entries {
 	 * Remove entry.
 	 *
 	 * @param  int $entry_id Entry ID.
+	 * @param  int $form_id Form ID.
 	 * @return bool
 	 */
-	public static function remove_entry( $entry_id ) {
+	public static function remove_entry( $entry_id, $form_id = 0 ) {
 		global $wpdb;
 
 		do_action( 'everest_forms_before_delete_entries', $entry_id );
@@ -293,6 +294,8 @@ class EVF_Admin_Entries {
 		if ( apply_filters( 'everest_forms_delete_entrymeta', true ) ) {
 			$wpdb->delete( $wpdb->prefix . 'evf_entrymeta', array( 'entry_id' => $entry_id ), array( '%d' ) );
 		}
+
+		do_action( 'everest_forms_after_delete_entries', $form_id, $entry_id );
 
 		return $delete;
 	}
@@ -324,6 +327,26 @@ class EVF_Admin_Entries {
 				),
 				array( 'entry_id' => $entry_id ),
 				array( '%d' ),
+				array( '%d' )
+			);
+		} elseif ( 'approved' === $status ) {
+			$update = $wpdb->update(
+				$wpdb->prefix . 'evf_entries',
+				array(
+					'status' => 'publish',
+				),
+				array( 'entry_id' => $entry_id ),
+				array( '%s' ),
+				array( '%d' )
+			);
+		} elseif ( 'denied' === $status ) {
+			$update = $wpdb->update(
+				$wpdb->prefix . 'evf_entries',
+				array(
+					'status' => $status,
+				),
+				array( 'entry_id' => $entry_id ),
+				array( '%s' ),
 				array( '%d' )
 			);
 		} else {
@@ -387,6 +410,32 @@ class EVF_Admin_Entries {
 		}
 
 		return $response;
+	}
+	/**
+	 * Delete booked slot after deleting the entries.
+	 *
+	 * @param int $form_id form id.
+	 * @param int $entry_id entry id.
+	 */
+	public function evf_delete_booked_slot( $form_id, $entry_id ) {
+		$form_data    = get_post( $form_id );
+		$form_content = json_decode( $form_data->post_content, true );
+		$form_fields  = $form_content['form_fields'];
+		foreach ( $form_fields as $field_name => $field ) {
+			if ( 'date-time' === $field['type'] && isset( $field['slot_booking_advanced'] ) && evf_string_to_bool( $field['slot_booking_advanced'] ) ) {
+				$booked_slot = maybe_unserialize( get_option( 'evf_booked_slot', '' ) );
+				if ( ! empty( $booked_slot ) && array_key_exists( $form_id, $booked_slot ) ) {
+					$form_booked_slot = $booked_slot[ $form_id ];
+					if ( array_key_exists( $entry_id, $form_booked_slot ) ) {
+						unset( $form_booked_slot[ $entry_id ] );
+						$booked_slot[ $form_id ] = $form_booked_slot;
+
+						$booked_slot = maybe_serialize( $booked_slot );
+						update_option( 'evf_booked_slot', $booked_slot );
+					}
+				}
+			}
+		}
 	}
 }
 

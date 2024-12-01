@@ -1,17 +1,19 @@
 === Zakra ===
+
 Contributors: themegrill
 Author: ThemeGrill
-Version: 2.2.0
-Tested up to: 6.0
-Requires PHP: 5.6
+Version: 4.0.3
+Tested up to: 6.7
+Requires PHP: 7.4
 Requires at least: 4.7
-Stable tag: 2.2.0
+Stable tag: 4.0.3
+
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.en.html
 Tags: one-column, two-columns, right-sidebar, grid-layout, custom-background, custom-colors, custom-menu, custom-logo, featured-images, footer-widgets, full-width-template, theme-options, threaded-comments, translation-ready, blog, rtl-language-support
 
 == Description ==
-Zakra is flexible, fast, lightweight and modern multipurpose theme that comes with many starter free sites (currently 10+ free starter sites and more will be added later) that you can use to make your site beautiful and professional. Check all the starter sites at https://zakratheme.com/demos/. Suitable for personal blog, portfolio, WooCommerce stores, business websites and niche-based sites (like Cafe, Spa, Charity, Yoga, Wedding, Dentist, Education etc) as well. Works with Elementor plus other major page builders so you can create any layout you want. The theme is responsive, Gutenberg compatible, SEO friendly, translation ready and major WordPress plugins compatible.
+Zakra is a powerful and versatile multipurpose theme that makes it easy to create beautiful and professional websites. With over free 40 pre-designed starter demo sites to choose from, you can quickly build a unique and functional site that fits your specific needs. Whether you're launching a blog, news site, e-commerce store, showcasing your portfolio, building a business site, LMS, or niche-specific site (such as a cafe, spa, charity, yoga studio, wedding venue, dental practice, photography, restaurant, or educational institution), Zakra has everything you need to succeed. The theme integrates seamlessly with popular page builders like Elementor, Brizy, BlockArt, and the Gutenberg editor, giving you complete freedom to create any layout you can imagine. Importantly, Zakra is optimized for speed, features a mobile-first responsive design, is built with block-based technology, and is optimized for search engines. It is also compatible with a wide range of popular WordPress plugins, allowing you to extend its functionality as needed. Build your next project with Zakra today and see the difference for yourself. Check out all the starter sites at https://zakratheme.com/demos!
 
 For more information about Zakra please go to https://zakratheme.com/
 
@@ -60,6 +62,226 @@ License: GNU GPL, Version 3, https://www.gnu.org/licenses/gpl-3.0.html
 Unless otherwise specified, all the theme files, scripts and images including the screenshot image are licensed under [GNU GPL] (http://www.gnu.org/licenses/gpl-3.0.txt), version 3 or later.
 
 == Changelog ==
+= Version 4.0.3 - 2024-11-15 =
+* Fix   - WordPress 6.7 customizer css issue.
+
+= Version 4.0.2 - 2024-10-23 =
+* Added - Option to change footer builder component alignment.
+* Added - Option to change footer builder component layout.
+* Fix   - Mobile view search issue.
+
+= Version 4.0.1 - 2024-09-20 =
+* Fix - Menu color issue.
+* Fix - WooCommerce page sidebar issue.
+* Fix - Retina logo issue.
+
+= Version 4.0.0.2 - 2024-09-16 =
+* Fix       - Page sidebar issue.
+
+= Version 4.0.0.1 - 2024-09-16 =
+* Fix       - Footer migration issue.
+
+= Version 4.0.0 - 2024-09-16 =
+* Added       - New Header builder.
+* Enhancement - Introduced a new visual Header Builder with drag and drop functionality.
+* Added       - Header Builder component - Site Title and Logo.
+* Enhancement - Option to change color and typography for Site Title and Logo.
+* Enhancement - Option to change enable/disable for Site Title and Logo.
+* Enhancement - Option to change logo height.
+* Added       - Header Builder component - Primary Menu.
+* Enhancement - Option to change color, background, padding, margin and typography for primary menu component.
+* Enhancement - Option to change sub menu color, background, padding, border etc.
+* Added       - Header Builder component - Secondary, Tertiary and Quaternary Menu.
+* Enhancement - Option to change color and typography for secondary, tertiary and quaternary menu component.
+* Enhancement - Option to change sub menu typography.
+* Added       - Header Builder component - Button.
+* Enhancement - Option to change color, background, padding, border for button.
+* Added       - Header Builder component - Search.
+* Added       - Option to change search input color text and background color.
+* Added       - Option to change search icon color.
+* Added       - Header Builder component - HTML 1 and HTML 2.
+* Added       - Option to change HTML 1 and HTML 2 color, link color, font size, margin.
+* Added       - Header Builder component - Widget 1 and Widget 2.
+* Added       - Option to change Widget 1 and Widget 2 title and content color, link color and typography.
+* Added       - Header Builder component - Social.
+* Added       - Option to add new social icons.
+* Added       - Header Builder component - Cart.
+* Added       - Option to change cart icon color.
+* Added       - Option to change all header row container width, height, color, background, padding, margin, border etc.
+* Enhancement - UI/UX improvement in toggle, select, slider, radio-image, sortable, editor, typography, dimension, navigation and color control.
+* Added       - New customizer color Palette.
+* Enhancement - Introduced reset to default option in all control.
+* Enhancement - Customizer color picker.
+* Enhancement - Customizer background control.
+* Enhancement - Customizer Typography control.
+* Added       - New Footer builder.
+* Enhancement - Introduced a new visual Footer Builder with drag and drop functionality.
+* Added       - Footer Builder component - HTML 1 and HTML 2.
+* Added       - Option to change HTML 1 and HTML 2 color, link color, font size, margin.
+* Added       - Footer Builder component - Widget 1, Widget 2, Widget 3, Widget 4, Widget 5 and Widget 6.
+* Added       - Option to change Widgets title and content color, link color and typography.
+* Added       - Footer Builder component - Menu 1 and Menu 2.
+* Added       - Option to change Menu 1 and Menu 2 color and typography.
+* Added       - Footer Builder component - Social.
+* Added       - Option to add new social icons.
+* Added       - Option to add new social icons.
+* Added       - Footer Builder component - Copyright.
+* Added       - Option to change copyright color, link color, typography, margin.
+* Added       - Option to change footer column for particular row.
+* Added       - Option to change all footer row container width, height, color, background, padding, margin, border etc.
+* Enhancement - UI/UX improvement in page setting.
+
+= Version 3.0.17 - 2024-05-17 =
+* Fix - Search issue.
+
+= Version 3.0.16 - 2024-05-07 =
+* Fix - Compatibility with Elementor header footer plugin.
+
+= Version 3.0.15 - 2024-05-06 =
+* Add    - Compatibility with Elementor header footer plugin.
+* Update - Compatibility with WPML plugin.
+* Fix    - Page setting menu color issue.
+
+= Version 3.0.14 - 2024-04-18 =
+* Feature     - To change normal search as product search.
+* Enhancement - Elementor header and footer plugin compatibility.
+* Fix         - WooCommerce shortcode issue.
+
+= Version 3.0.13 - 2024-03-26 =
+* Added - To change post date type.
+* Fix    - Open sans font issue.
+* Fix    - Primary color issue fix.
+* Fix    - WooCommerce button primary color issue.
+* Fix    - Sale single page issue.
+
+= Version 3.0.12 - 2024-03-08 =
+* Added - Option to change content area padding.
+* Fix   - Cart table word break issue.
+* Fix   - Apply coupon and update cart primary color issue.
+* Fix   - PHP 7.0.0 and 7.0.2 issue.
+
+= Version 3.0.11 - 2024-02-28 =
+* Enhancement - Introduced `zakra_sidebar_before` and `zakra_sidebar_after` hook.
+
+= Version 3.0.10 - 2024-02-14 =
+* Update - Dashboard design update.
+* Fix    - One page menu issue.
+
+= Version 3.0.9 - 2024-01-16 =
+* Fix - PHP error.
+
+= Version 3.0.8 - 2023-12-27 =
+* Fix - Migration issue.
+
+= Version 3.0.7 - 2023-12-12 =
+* Fix - Customizer default color issue.
+* Fix - PHP error.
+
+= Version 3.0.6 - 2023-11-09 =
+* Feature - Option to disable page header globally.
+* Fix     - Stretched layout css issue.
+
+= Version 3.0.5 - 2023-11-06 =
+* Fix - Customizer selector update.
+* Fix - Cart page word break issue.
+* Fix - Single page quantity design issue.
+
+= Version 3.0.4 - 2023-10-05 =
+* Added - Support new header style.
+* Fix   - WooCommerce button issue.
+* Fix   - Single page width issue.
+* Fix   - Sidebar issue.
+
+= Version 3.0.3 - 2023-09-11 =
+* Feature - Added YITH WooCommerce Quick View plugin support.
+* Add     - Font awesome V6.2.4 support.
+* Fix     - Typography and slider reset issue.
+* Fix     - Priority plus navigation issue.
+
+= Version 3.0.2 - 2023-08-29 =
+* Enhancement - Overall UI/UX improvements of WooCommerce frontend side.
+* Feature     - Added YITH WooCommerce Wishlist plugin support.
+* Feature     - Header Wishlist count.
+* Fix         - Sub menu expand issue.
+
+= Version 3.0.1 - 2023-08-14 =
+* Feature - Option to load Google fonts locally.
+* Fix     - Main header layout 2 design issue in boxed layout.
+* Fix     - Scroll to top icon color issue.
+
+= Version 3.0.0.5 - 2023-08-01 =
+* Fix - Font size issue on WP editor.
+* Fix - Mobile navigation search icon design issue.
+
+= Version 3.0.0.4 - 2023-07-24 =
+* Fix     - Submenu dropdown icon issue.
+* Updated - Mobile hamburger icon on search disabled.
+
+= Version 3.0.0.3 - 2023-07-21 =
+* Fix     - Customizer default value update
+* Updated - Dynamic selector
+
+= Version 3.0.0.2 - 2023-07-20 =
+* Fix - Paragraph spacing issue
+* Fix - Mobile submenu scrollbar issue.
+
+= Version 3.0.0.1 - 2023-07-19 =
+* Fix - Mobile submenu icon click issue
+* Fix - Mobile submenu depth issue
+
+= Version 3.0.0 - 2023-07-18 =
+* Enhancement - Overall UI/UX improvements of frontend side of the theme
+* Enhancement - Responsiveness and mobile-first design
+* Enhancement - Introduced SVG icons for speed and better design
+* Enhancement - Blog, Post content, meta, CTA button
+* Enhancement - Post comments design section
+* Enhancement - Content area boxed layout design.
+* Enhancement - Sidebar layout design.
+* Enhancement - Search no result found page design
+* Enhancement - Page design
+* Enhancement - 404 page design
+* Enhancement - Overall layout/design improvement in header area
+* Enhancement - Mobile menu design
+* Enhancement - Improved header search
+* Enhancement - Overall layout/design improvement in footer area
+* Enhancement - WordPress default blocks/widgets design
+* Enhancement - Improved Block Editor design
+* Enhancement - Overall UI/UX of customizer controls
+* Enhancement - Improved design of icons used in radio image control
+* Enhancement - Use toggle control instead of checkboxes
+* Enhancement - Introduced unit selector, slider in typography control
+* Enhancement - UX improvement in responsive switcher setting
+* Enhancement - Use of toggle instead of eye icon inside sortable control
+* Enhancement - Use of toggle instead of eye icon inside sortable control
+* Enhancement - Introduced unit selector and progress bar indicator in the slider control
+* Feature     - Option of unsortable items inside sortable control
+* Feature     - Introduced input binding setting in dimension control
+* Feature     - Introduced input binding and unit selector setting in dimension control
+* Added       - Introduced new subheadings control
+* Enhancement - Refactored options arrangements for better user experience
+* Enhancement - Consistency on layout and style options
+* Enhancement - Updated strings used for customizer options for clarity
+* Enhancement - Better file/folder organization
+* Tweak       - Improved Coding Standards
+* Tweak       - PHP OOP way code implementation
+* Enhancement - Mobile-first CSS
+* Enhancement - Proper CSS reusability implementation for less code
+* Enhancement - Use of CSS flex/grid properties instead of float
+* Enhancement - Use of CSS variables
+* Enhancement - Overall CSS transition on events
+
+= Version 2.2.3 - 2023-07-13 =
+* Tweak - Major release notice.
+
+= Version 2.2.2.1 - 2023-07-05 =
+* Update - Beta release notice.
+
+= Version 2.2.2 - 2023-07-04 =
+* Tweak - Beta release notice.
+
+= Version 2.2.1 - 2023-05-16 =
+* Fix - Escaping issues.
+
 = Version 2.2.0 - 2023-03-22 =
 * Fix         - Play/Pause Button not being centered aligned in Header Media.
 * Fix         - Spacing issue on mobile devices while no sidebar layout is selected.

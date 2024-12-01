@@ -14,6 +14,44 @@
 		});
 	});
 
+	// Function to handle changes in the reporting frequency while sending the entries stat report.
+	$(document).ready(function () {
+		function handleReportingFrequencyChange() {
+			var everest_forms_entries_reporting_frequency = $('#everest_forms_entries_reporting_frequency').val();
+				if ('Weekly' !== everest_forms_entries_reporting_frequency) {
+				$('#everest_forms_entries_reporting_day').closest('.everest-forms-global-settings').hide();
+			} else {
+				$('#everest_forms_entries_reporting_day').closest('.everest-forms-global-settings').show();
+			}
+		}
+
+		// Execute the function on page load
+		handleReportingFrequencyChange();
+
+
+
+		// Add an event listener for changes and on the click in the reporting frequency
+		$(document).on('change click', '#everest_forms_entries_reporting_frequency', handleReportingFrequencyChange);
+	});
+
+	// Function to handle changes in the premium sidebar.
+		$(document).ready(function () {
+			function handlePremiumSidebar() {
+				var isCheckboxChecked = $('#everest-forms-enable-premium-sidebar').is(':checked');
+				localStorage.setItem('isPremiumSidebarEnabled', isCheckboxChecked);
+				document.cookie = 'isPremiumSidebarEnabled=' + isCheckboxChecked + '; path=/;';
+				if (isCheckboxChecked) {
+					$('body').removeClass('evf-premium-sidebar-hidden').addClass('evf-premium-sidebar-show');
+					$('.everest-forms-toggle-text').text('Show Sidebar');
+				} else {
+					$('body').removeClass('evf-premium-sidebar-show').addClass('evf-premium-sidebar-hidden');
+					$('.everest-forms-toggle-text').text('Hide Sidebar');
+				}
+			}
+			$(document).on('change', '#everest-forms-enable-premium-sidebar', handlePremiumSidebar);
+
+		});
+
 
 	// Enable Perfect Scrollbar.
 	$( document ).on( 'init_perfect_scrollbar', function() {
@@ -117,7 +155,7 @@
 			var maxVal   = maxField.val();
 			var minVal   = minField.val();
 
-			if ( 0 !== minVal.length && 0 !== maxVal.length ) { 
+			if ( 0 !== minVal.length && 0 !== maxVal.length ) {
 				if ( parseFloat( minVal ) > parseFloat( maxVal ) ) {
 					if( $( this ).attr( 'id' ).indexOf( 'min_value' ) !== -1 ) {
 						$( document.body ).triggerHandler( 'evf_add_error_tip', [ $( this ), 'i18n_field_min_value_greater', params ] );
@@ -148,7 +186,7 @@
 
 			if ( minVal > maxVal ||  ( '' === maxField.val() && '' !== minField.val() ) ) {
 				maxField.val( minVal + 1 );
-			} 
+			}
 		})
 
 		.on('click','.everest-forms-field-number, .everest-forms-field-range-slider', function(e) {
@@ -178,7 +216,7 @@
 						$( document.body ).triggerHandler( 'evf_add_error_tip', [ $this, 'i18n_field_def_value_greater', params ] );
 					} else  {
 						$( document.body ).triggerHandler( 'evf_remove_error_tip', [ $this, 'i18n_field_def_value_greater' ] );
-					} 
+					}
 
 					if( 0 !== defVal.length && parseFloat( defVal ) < parseFloat( minVal ) ) {
 						$( document.body ).triggerHandler( 'evf_remove_error_tip', [ $this, 'i18n_field_def_value_greater' ] );
@@ -196,10 +234,10 @@
 				var maxVal   = parseFloat( maxField.val() );
 				var minVal   = parseFloat( minField.val() );
 				var defVal   = parseFloat( e.target.value );
-	
+
 				if ( minVal > defVal || maxVal < defVal  ) {
 					e.target.value = '';
-				} 
+				}
 			})
 		})
 
@@ -257,6 +295,10 @@
 	});
 
 	$( document ).on( 'click', '.everest-forms-email-add', function() {
+		$( '.evf-content-email-settings-inner .tooltipstered' ).tooltipster( 'destroy' );
+	});
+
+	$( document ).on( 'click', '.everest-forms-email-duplicate', function() {
 		$( '.evf-content-email-settings-inner .tooltipstered' ).tooltipster( 'destroy' );
 	});
 
@@ -379,5 +421,179 @@
 		$(this).siblings().removeClass('is-active')
 		$(this).addClass('is-active');
 	})
+
+	$(document).find('.evf-form-locate').on('click', function(e) {
+		e.preventDefault();
+		var id = $(this).data('id');
+		var data = {
+			'action':'everest_forms_locate_form_action',
+			'id':id,
+			'security':everest_forms_admin_locate.ajax_locate_nonce
+		}
+		var tag = e.target;
+		var target_tag = tag.closest(".row-actions");
+		$.ajax({
+			url : everest_forms_admin_locate.ajax_url,
+			dataType: 'json', // JSON type is expected back from the PHP script.
+			cache: false,
+			data: data,
+			type: 'POST',
+			beforeSend: function () {
+				var spinner = '<i class="evf-loading evf-loading-active"></i>';
+				$(target_tag).append( spinner );
+			},
+			success: function(response) {
+				var len = Object.keys(response.data).length;
+				if(len>0) {
+					var add_tag = '<div class = "locate-form"><span>'+everest_forms_admin_locate.form_found+'</span>';
+					var i = 1;
+					$.each(response.data, function(index, value) {
+						if(i > 1) {
+							add_tag +=", ";
+						}
+						let wordsArray = index.split(" ");
+						if(wordsArray.length > 4 ) {
+							let slicedArray = wordsArray.slice(0, 4);
+							index = slicedArray.join(" ");
+							index = index + "...";
+						}
+						add_tag+=' <a href="'+value+'" target="_blank">'+index+'</a>';
+						i++;
+					});
+					add_tag +="</div>";
+					if($(target_tag).find('.locate-form').length !=0) {
+						$(target_tag).find('.locate-form').remove();
+					}
+					$(target_tag).find('span:first').prepend(add_tag);
+
+				} else {
+					if($(target_tag).find('.locate-form').length !=0) {
+						$(target_tag).find('.locate-form').remove();
+					}
+					$(target_tag).find('span:first').prepend('<div class = "locate-form"><span>'+everest_forms_admin_locate.form_found_error+'</span></div>');
+				}
+				$(target_tag).find('.evf-loading').remove();
+			}
+
+		})
+	});
+	//Dismiss the form migrator notice.
+	$('.evf-fm-dismiss-notice').on('click', function(e){
+		e.preventDefault();
+		var optionId = $(this).data('option-id');
+		var data = {
+			'action':'everest_forms_fm_dismiss_notice',
+			'option_id':optionId,
+			'security':everest_forms_admin_form_migrator.evf_fm_dismiss_notice_nonce,
+		}
+
+		$.ajax({
+			url: everest_forms_admin_form_migrator.ajax_url,
+			type:"POST",
+			dataType:'JSON',
+			data:data,
+			success:function(res){
+				if(res.success){
+					$('.evf-fm-notice').hide();
+				}
+			}
+		})
+	});
+	$( '.evf-smart-phone-field' ).each( function( i, el ) {
+		var $el = $( el );
+		var field_name     = $el.attr( 'name' );
+		setTimeout(function() {
+			$('input[name="' + field_name + '"]').val($el.val());
+		}, 2000);
+	});
+	$('.everest-forms-system-info-setting-copy').tooltipster({
+		content: 'Copied',
+		trigger: 'click',
+		theme: 'tooltipster-noir',
+		interactive: true,
+		functionBefore: function(instance, helper) {
+			var table = $('.everest-forms-system-info-setting table')[0];
+			var range = document.createRange();
+			range.selectNode(table);
+			window.getSelection().removeAllRanges();
+			window.getSelection().addRange(range);
+			document.execCommand('copy');
+			window.getSelection().removeAllRanges();
+		}
+	});
+
+
+
+	// Search functionality in addon.
+	$(document).ready(function(){
+		$("#everest_forms_search_addons").on("keyup search", function() {
+			var value = $(this).val().toLowerCase();
+			var matchFound = false;
+
+			$(".the-list .plugin-card").each(function() {
+				var $card = $(this);
+				var text = $card.text().toLowerCase();
+
+				if (text.indexOf(value) > -1) {
+					$card.show();
+					matchFound = true;
+				} else {
+					$card.hide();
+				}
+			});
+
+			if (!matchFound) {
+				$(".refresh").hide();
+				$("#evf_addon_no_result_found").remove();
+				$(".refresh").after('<p id="evf_addon_no_result_found">No Result Found</p>');
+			} else {
+				$(".refresh").show();
+				$("#evf_addon_no_result_found").hide();
+			}
+		});
+	});
+	//Rest api settings.
+	if($('#everest_forms_enable_restapi').is(":checked")){
+		$(document).find('.evf-restapi-key-wrapper').show();
+	}else {
+		$(document).find('.evf-restapi-key-wrapper').hide();
+	}
+	$('#everest_forms_enable_restapi').on('click', function(e){
+		const {checked} = e.target;
+		if(checked) {
+			$(document).find('.evf-restapi-key-wrapper').show();
+		}else {
+			$(document).find('.evf-restapi-key-wrapper').hide();
+		}
+	});
+	$('#everest_forms_restapi_keys').on('click', function(e){
+		evfClearClipboard();
+		evfSetClipboard( $( this ).val(), $( this ) );
+		e.preventDefault();
+	}).on('aftercopy', function() {
+		$( this ).tooltipster( 'content', $( this ).attr( 'data-copied' ) ).trigger( 'mouseenter' ).on( 'mouseleave', function() {
+			var $this = $( this );
+
+			setTimeout( function() {
+				$this.tooltipster( 'content', $this.attr( 'data-tip' ) );
+			}, 5000 );
+		} );
+	});
+	$('.everest-forms-generate-api-key, .everest-forms-regenerate-api-key').on('click', function(){
+		let data = {
+			action: "everest_forms_generate_restapi_key",
+			security: everest_forms_admin_generate_restapi_key.ajax_restapi_key_nonce,
+		};
+		$.ajax({
+			url: everest_forms_admin_generate_restapi_key.ajax_url,
+			type: "post",
+			data:data,
+			success:(res)=>{
+				$(document).find('#everest_forms_restapi_keys').val(res.data);
+			}
+		})
+	});
+
+
 
 })( jQuery, everest_forms_admin );

@@ -9,15 +9,33 @@ jQuery( function( $ ) {
 					btn = formTuple.find( '.evf-submit' ),
 				 	 razorpayForms = formTuple.find( "[data-gateway='razorpay']" );
 
-
-				btn.on( 'click', function( e ) {
+				btn.on( 'click', async function( e ) {
 					var paymentMethod = formTuple.find( ".everest-forms-stripe-gateways-tabs .evf-tab" ).has( 'a.active' ).data( 'gateway' );
 					if(undefined === paymentMethod) {
 						paymentMethod = formTuple.find( ".everest-forms-gateway[data-gateway='stripe']" ).data( 'gateway' );
 					}
 
 					if (formTuple.find( ".everest-forms-gateway[data-gateway='stripe']").hasClass('StripeElement--empty') && $(".evf-field-credit-card ").is(':visible') ){
-						$( '#card-errors' ).html( 'This field is required' ).show();
+						$(document).ready(function() {
+							$('#card-errors').html('This field is required').show();
+							$('.evf-submit').text('Submit');
+							$('.evf-submit').attr('disabled', false);
+
+						});
+						formTuple.trigger( 'focusout' ).trigger( 'change' ).trigger( 'submit' );
+						return false;
+					}
+
+					//For square payment credit card validation.
+					var squareMsgContainer = formTuple.find(".everest-forms-gateway[data-gateway='square']").find('.sq-card-message-error');
+					if ( squareMsgContainer.length > 0 ) {
+						var squareErrorMsg = squareMsgContainer.text();
+						$( document ).ready( function() {
+							$( '#card-errors' ).html( squareErrorMsg ).show();
+							$( '.evf-submit' ).text( 'Submit' );
+							$( '.evf-submit' ).attr( 'disabled', false);
+						});
+						formTuple.trigger( 'focusout' ).trigger( 'change' ).trigger( 'submit' );
 						return false;
 					}
 
@@ -38,6 +56,36 @@ jQuery( function( $ ) {
 					formTuple.trigger( 'focusout' ).trigger( 'change' ).trigger( 'submit' );
 
 					var errors = formTuple.find( '.evf-error:visible' );
+
+					if( $(".everest-forms-authorize_net[data-gateway='authorize-net']").length ) {
+						const cardData =  window.EverestFormsAuthorizeNet.getCardData(formTuple);
+
+						if( ! Object.values(cardData).some(value => !value ) ) {
+
+							// Define the Promise.
+							const authorizeNetAjaxSubmitHandlerPromise = new Promise(function (resolve, reject) {
+								window.EverestFormsAuthorizeNet.authorizeNetAjaxSubmitHandler(v).then(resolve).catch(reject);
+							});
+
+							try {
+								const response = await authorizeNetAjaxSubmitHandlerPromise;
+
+								if( "Ok" === response.messages.resultCode ) {
+									data.push(
+										{ name: 'everest_forms[authorize_net][opaque_data][descriptor]', value: response.opaqueData.dataDescriptor },
+										{ name: 'everest_forms[authorize_net][opaque_data][value]', value: response.opaqueData.dataValue }
+									);
+								}
+							} catch (error) {
+								return;
+							}
+
+						}
+
+						if (errors.length < 1) {
+							errors = formTuple.parents('div.everest-forms').find('.everest-forms-notice.everest-forms-notice--error .evf-error');
+						}
+					}
 
 					if ( errors.length > 0 ) {
 						$( [document.documentElement, document.body] ).animate({
@@ -66,14 +114,22 @@ jQuery( function( $ ) {
 					})
 					.done( function ( xhr, textStatus, errorThrown ) {
 						var redirect_url = ( xhr.data && xhr.data.redirect_url ) ? xhr.data.redirect_url : '';
-						if ( redirect_url ) {
+						if ( redirect_url && 'stripe' !== formTuple.find( ".everest-forms-gateway[data-gateway='stripe']" ).data( 'gateway' )) {
 							formTuple.trigger( 'reset' );
 							window.location = redirect_url;
 							return;
 						}
+					if (xhr && xhr.payment_method && xhr.payment_method === 'paypal' && xhr.redirect) {
+						if ('paypal' === xhr.payment_method) {
+							window.location.href = xhr.redirect;
+							return;
+						}
+					}
+
 						if ( 'success' === xhr.data.response || true === xhr.success ) {
 							let pdf_download_message = '';
 							let quiz_reporting = '';
+							let preview_confirmation = '';
 							if(xhr.data.form_id !== undefined && xhr.data.entry_id !== undefined && xhr.data.pdf_download == true){
 								pdf_download_message = '<br><small><a href="/?page=evf-entries-pdf&form_id='+ xhr.data.form_id+'&entry_id='+xhr.data.entry_id+'">' + xhr.data.pdf_download_message + '</a></small>';
 							}
@@ -81,8 +137,12 @@ jQuery( function( $ ) {
 								quiz_reporting = xhr.data.quiz_reporting;
 							}
 
-							var paymentMethod = formTuple.find( ".everest-forms-stripe-gateways-tabs .evf-tab" ).has( 'a.active' ).data( 'gateway' );
+							if( xhr.data.is_preview_confirmation == '1'){
+								preview_confirmation = xhr.data.preview_confirmation;
+							}
 
+
+							var paymentMethod = formTuple.find( ".everest-forms-stripe-gateways-tabs .evf-tab" ).has( 'a.active' ).data( 'gateway' );
 
 							if(undefined === paymentMethod) {
 								paymentMethod = formTuple.find( ".everest-forms-gateway[data-gateway='ideal']" ).data( 'gateway' );
@@ -107,8 +167,13 @@ jQuery( function( $ ) {
 								formTuple.trigger( 'evf_process_payment', xhr.data );
 								return;
 							}
+							if( 'square' === formTuple.find( ".everest-forms-gateway[data-gateway='square']" ).data('gateway') ){
+								formTuple.trigger( 'everest_forms_frontend_payment_before_success_message', xhr.data );
+								return;
+							}
+
 							formTuple.trigger( 'reset' );
-							formTuple.closest( '.everest-forms' ).html( '<div class="everest-forms-notice everest-forms-notice--success" role="alert">' + xhr.data.message + pdf_download_message + '</div>' + quiz_reporting ).focus();
+							formTuple.closest( '.everest-forms' ).html( '<div class="everest-forms-notice everest-forms-notice--success" role="alert">' + xhr.data.message + pdf_download_message + '</div>' + quiz_reporting + preview_confirmation ).focus();
 							localStorage.removeItem(formTuple.attr('id'));
 
 							// Trigger for form submission success.

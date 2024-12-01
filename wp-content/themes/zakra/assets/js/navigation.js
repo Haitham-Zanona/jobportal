@@ -10,8 +10,9 @@
 var ZakraNavHelper = {
 
 	// Returns first children of a node.
-	getChildNodes : function ( node ) {
-		var children = [], child;
+	getChildNodes: function( node ) {
+		var children = [],
+			child;
 
 		for ( child in node.childNodes ) {
 			if ( node.childNodes.hasOwnProperty( child ) && 1 === node.childNodes[child].nodeType ) {
@@ -22,21 +23,21 @@ var ZakraNavHelper = {
 		return children;
 	},
 
-	offset: function ( el ) {
+	offset: function( el ) {
 		var rect       = el.getBoundingClientRect(),
 		    scrollLeft = window.pageXOffset || document.documentElement.scrollLeft,
 		    scrollTop  = window.pageYOffset || document.documentElement.scrollTop;
 
-		return {top: rect.top + scrollTop, left: rect.left + scrollLeft}
+		return {top: rect.top + scrollTop, left: rect.left + scrollLeft};
 	},
 
 
 	// Calculate the dimension of an element with margin, padding and content.
-	dimension : function ( el ) {
+	dimension: function( el ) {
 		return parseInt( document.defaultView.getComputedStyle( el, '' ).getPropertyValue( 'width' ) ) + parseInt( document.defaultView.getComputedStyle( el, '' ).getPropertyValue( 'margin-left' ) ) + parseInt( document.defaultView.getComputedStyle( el, '' ).getPropertyValue( 'padding-left' ) ) + parseInt( document.defaultView.getComputedStyle( el, '' ).getPropertyValue( 'padding-right' ) ) + parseInt( document.defaultView.getComputedStyle( el, '' ).getPropertyValue( 'margin-right' ) );
 	},
 
-	getOverflowItems : function ( navLi ) {
+	getOverflowItems: function( navLi ) {
 
 
 		navigation.style.flex = '0 0 ' + navUlTempWidth + 'px';
@@ -54,8 +55,8 @@ var ZakraNavHelper = {
 			}
 
 			if ( posTop > initialPos ) {
-				if ( ! li.classList.contains( 'tg-menu-item-search' ) && ! li.classList.contains( 'tg-menu-item-cart' ) &&
-					! li.classList.contains( 'tg-header-button-wrap' ) && ! li.classList.contains( 'tg-menu-extras-wrap' )
+				if ( ! li.classList.contains( 'zak-header-search' ) && ! li.classList.contains( 'zak-menu-item-cart' ) &&
+					! li.classList.contains( 'zak-header-button-wrap' ) && ! li.classList.contains( 'zak-menu-extras-wrap' )
 				) {
 					extraLi.push( li );
 				}
@@ -69,10 +70,10 @@ var ZakraNavHelper = {
 window.zakraNavHelper = ZakraNavHelper;
 
 (
-	function () {
+	function() {
 		var container, menu, links, i, len;
 
-		container = document.getElementById( 'site-navigation' );
+		container = document.getElementById( 'zak-primary-nav' );
 
 		if ( ! container ) {
 			return;
@@ -121,7 +122,7 @@ window.zakraNavHelper = ZakraNavHelper;
 		 * Toggles `focus` class to allow submenu access on tablets.
 		 */
 		(
-			function ( container ) {
+			function( container ) {
 				var touchStartFn, i,
 					parentLink = container.querySelectorAll( '.menu-item-has-children > a, .page_item_has_children > a' ),
 					supportsPassive = false;;
@@ -131,12 +132,12 @@ window.zakraNavHelper = ZakraNavHelper;
 							supportsPassive = true;
 						}
 					} );
-					window.addEventListener( "testPassive", null, opts );
-					window.removeEventListener( "testPassive", null, opts );
-				} catch (e) {}
+					window.addEventListener( 'testPassive', null, opts );
+					window.removeEventListener( 'testPassive', null, opts );
+				} catch ( e ) {}
 
 				if ( 'ontouchstart' in window ) {
-					touchStartFn = function ( e ) {
+					touchStartFn = function( e ) {
 						var i,
 							menuItem = this.parentNode;
 
@@ -170,10 +171,10 @@ window.zakraNavHelper = ZakraNavHelper;
  * Fixes menu out of viewport
  */
 (
-	function () {
+	function() {
 		var i, elEvent;
 
-		var elWithChildren = document.querySelectorAll( '.tg-primary-menu li.menu-item-has-children, .tg-primary-menu li.page_item_has_children' ),
+		var elWithChildren = document.querySelectorAll( '.zak-primary-nav li.menu-item-has-children, .zak-primary-nav li.page_item_has_children' ),
 			elCount        = elWithChildren.length,
 			elEvent        = isTouchDevice() ? 'touchstart' : 'mouseenter';
 
@@ -200,7 +201,7 @@ window.zakraNavHelper = ZakraNavHelper;
 		for ( i = 0; i < elCount; i++ ) {
 
 			// On mouse enter.
-			elWithChildren[i].addEventListener( elEvent, function ( ev ) {
+			elWithChildren[i].addEventListener( elEvent, function( ev ) {
 				var li = ev.currentTarget,
 					subMenu;
 
@@ -210,59 +211,61 @@ window.zakraNavHelper = ZakraNavHelper;
 
 					if ( subMenu ) {
 						if ( ! isElementInViewport( subMenu ) ) {
-							subMenu.classList.add( 'tg-edge' );
+							subMenu.classList.add( 'zak-edge' );
 						}
 					}
 				}
 			}, false );
 
 			// On mouse leave.
-			elWithChildren[i].addEventListener( 'mouseleave', function ( ev ) {
+			elWithChildren[i].addEventListener( 'mouseleave', function( ev ) {
 				var li = ev.currentTarget,
 					sub;
 
 				if ( li ) {
 					sub = li.querySelectorAll( '.sub-menu, .children' )[0];
 
-					sub.classList.remove( 'tg-edge' );
+					sub.classList.remove( 'zak-edge' );
 
-					if ( sub.classList.contains( 'tg-edge' ) ) {
-						sub.classList.remove( 'tg-edge' );
+					if ( sub.classList.contains( 'zak-edge' ) ) {
+						sub.classList.remove( 'zak-edge' );
 					}
 				}
 			}, false );
 		} // End: for ( i in elWithChildren ) {
 
 	}
-)();
+	() );
 
 /**
  * Keep menu items on one line.
  */
 (
-	function () {
+	function() {
 
 		// Get required elements.
 		var more, search, cart, button, button2, searchWidth, cartWidth, buttonWidth, moreWidth, navUl, navLi,
 			navLiWidth, extraWrap, navWrapWidth, overflowItems;
 
-		navigation = document.getElementById( 'site-navigation' );
+		navigation = document.getElementById( 'zak-primary-nav' );
 
 		// Return if no navigation markup.
+
 		if ( null === navigation ) {
 			return;
 		}
 
 		// Return if `Keep Menu Items on One Line` customizer option is not enabled
-		if ( ! navigation.classList.contains( 'tg-extra-menus' ) ) {
+
+		if ( ! navigation.classList.contains( 'zak-extra-menus' ) ) {
 			return;
 		}
 
 		// Extra ellipsis icon added via PHP.
-		more      = navigation.getElementsByClassName( 'tg-menu-extras-wrap' )[0];
+		more      = navigation.getElementsByClassName( 'zak-menu-extras-wrap' )[0];
 
 		// Ul to append extra menu items.
-		extraWrap = document.getElementById( 'tg-menu-extras' );
+		extraWrap = document.getElementById( 'zak-menu-extras' );
 
 		// No primary menu assigned.
 		if ( null === extraWrap ) {
@@ -275,10 +278,10 @@ window.zakraNavHelper = ZakraNavHelper;
 
 		navWrapWidth = navigation.offsetWidth;
 
-		search      = navigation.getElementsByClassName( 'tg-menu-item-search' )[0];
-		cart        = navigation.getElementsByClassName( 'tg-menu-item-cart' )[0];
-		button      = navigation.getElementsByClassName( 'tg-header-button-wrap' )[0];
-		button2     = navigation.getElementsByClassName( 'tg-header-button-wrap' )[1];
+		search      = navigation.getElementsByClassName( 'zak-header-search' )[0];
+		cart        = navigation.getElementsByClassName( 'zak-menu-item-cart' )[0];
+		button      = navigation.getElementsByClassName( 'zak-header-button-wrap' )[0];
+		button2     = navigation.getElementsByClassName( 'zak-header-button-wrap' )[1];
 
 		searchWidth = search ? ZakraNavHelper.dimension( search ) : 0;
 		cartWidth   = cart ? ZakraNavHelper.dimension( cart ) : 0;
@@ -290,18 +293,21 @@ window.zakraNavHelper = ZakraNavHelper;
 
 		navLiWidth = 0;
 
-		navLi.forEach( function ( menuItem, index  ) {
+
+		navLi.forEach( function( menuItem, index  ) {
 			navLiWidth += ZakraNavHelper.dimension( menuItem );
 		} );
+
+		navWrapWidth = ( navLi.length - 1 ) * 24;
 
 		// If overflow.
 		if ( navLiWidth > navWrapWidth ) {
 
 			overflowItems = ZakraNavHelper.getOverflowItems( navLi );
 
-			overflowItems.forEach( function ( item ) {
+			overflowItems.forEach( function( item ) {
 				extraWrap.appendChild( item );
-			});
+			} );
 
 		} else {
 
@@ -317,9 +323,9 @@ window.zakraNavHelper = ZakraNavHelper;
  * Close mobile menu on clicking menu items.
  */
 (
-	function () {
-		var mobMenuItems      = document.querySelectorAll( '#mobile-navigation li a' ),
-			toggleButton      = document.querySelector( '.tg-mobile-toggle' ),
+	function() {
+		var mobMenuItems      = document.querySelectorAll( '#zak-mobile-nav li a' ),
+			toggleButton      = document.querySelector( '.zak-toggle-menu' ),
 			mobMenuItemsCount = mobMenuItems.length,
 			item;
 
@@ -328,7 +334,7 @@ window.zakraNavHelper = ZakraNavHelper;
 
 			item.addEventListener(
 				'click',
-				function () {
+				function() {
 					toggleButton.click();
 				}
 			);

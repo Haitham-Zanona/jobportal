@@ -21,8 +21,8 @@ class Zakra_Meta_Box_Page_Settings {
 		// Add nonce for security and authentication.
 		wp_nonce_field( 'zakra_nonce_action', 'zakra_meta_nonce' );
 
-		$layout = get_post_meta( get_the_ID(), 'zakra_layout' );
-		$layout = isset( $layout[0] ) ? $layout[0] : 'tg-site-layout--customizer';
+		$layout = get_post_meta( get_the_ID(), 'zakra_sidebar_layout' );
+		$layout = isset( $layout[0] ) ? $layout[0] : 'customizer';
 
 		$remove_content_margin = get_post_meta( get_the_ID(), 'zakra_remove_content_margin' );
 		$remove_content_margin = isset( $remove_content_margin[0] ) ? $remove_content_margin[0] : 0;
@@ -36,12 +36,12 @@ class Zakra_Meta_Box_Page_Settings {
 		$page_header = get_post_meta( get_the_ID(), 'zakra_page_header' );
 		$page_header = isset( $page_header[0] ) ? $page_header[0] : 1;
 
-		$header_style = get_post_meta( get_the_ID(), 'zakra_header_style' );
+		$header_style = get_post_meta( get_the_ID(), 'zakra_main_header_style' );
 		$header_style = isset( $header_style[0] ) ? $header_style[0] : 'default';
 
-		$customize_menu_item_color        = get_theme_mod( 'zakra_primary_menu_text_color', '#16181a' );
-		$customize_menu_item_hover_color  = get_theme_mod( 'zakra_primary_menu_text_hover_color', '#269bd1' );
-		$customize_menu_item_active_color = get_theme_mod( 'zakra_primary_menu_text_active_color', '#269bd1' );
+		$customize_menu_item_color        = get_theme_mod( 'zakra_main_menu_color', '#16181a' );
+		$customize_menu_item_hover_color  = get_theme_mod( 'zakra_main_menu_hover_color', '#027abb' );
+		$customize_menu_item_active_color = get_theme_mod( 'zakra_main_menu_active_color', '#027abb' );
 
 		$menu_item_color = get_post_meta( get_the_ID(), 'zakra_menu_item_color' );
 		$menu_item_color = isset( $menu_item_color[0] ) ? $menu_item_color[0] : $customize_menu_item_color;
@@ -52,7 +52,7 @@ class Zakra_Meta_Box_Page_Settings {
 		$menu_item_active_color = get_post_meta( get_the_ID(), 'zakra_menu_item_active_color' );
 		$menu_item_active_color = isset( $menu_item_active_color[0] ) ? $menu_item_active_color[0] : $customize_menu_item_active_color;
 
-		$menu_item_active_style = get_post_meta( get_the_ID(), 'zakra_menu_item_active_style' );
+		$menu_item_active_style = get_post_meta( get_the_ID(), 'zakra_menu_active_style' );
 		$menu_item_active_style = isset( $menu_item_active_style[0] ) ? $menu_item_active_style[0] : '';
 
 		/**
@@ -123,40 +123,41 @@ class Zakra_Meta_Box_Page_Settings {
 							$sidebar_layout_choices = apply_filters(
 								'zakra_site_layout_choices',
 								array(
-									'tg-site-layout--default' => array(
-										'label' => '',
-										'url'   => ZAKRA_PARENT_INC_ICON_URI . '/layout-default.png',
+									'left'      => array(
+										'label' => 'Left Sidebar',
+										'url'   => ZAKRA_PARENT_INC_ICON_URI . '/left-sidebar.svg',
 									),
-									'tg-site-layout--left' => array(
-										'label' => '',
-										'url'   => ZAKRA_PARENT_INC_ICON_URI . '/left-sidebar.png',
+									'right'     => array(
+										'label' => 'Right Sidebar',
+										'url'   => ZAKRA_PARENT_INC_ICON_URI . '/right-sidebar.svg',
 									),
-									'tg-site-layout--right' => array(
-										'label' => '',
-										'url'   => ZAKRA_PARENT_INC_ICON_URI . '/right-sidebar.png',
+									'centered'  => array(
+										'label' => 'Centered',
+										'url'   => ZAKRA_PARENT_INC_ICON_URI . '/sidebar-centered.svg',
 									),
-									'tg-site-layout--no-sidebar' => array(
-										'label' => '',
-										'url'   => ZAKRA_PARENT_INC_ICON_URI . '/full-width.png',
+									'contained' => array(
+										'label' => 'Contained',
+										'url'   => ZAKRA_PARENT_INC_ICON_URI . '/sidebar-contained.svg',
 									),
-									'tg-site-layout--stretched' => array(
-										'label' => '',
-										'url'   => ZAKRA_PARENT_INC_ICON_URI . '/stretched.png',
+									'stretched' => array(
+										'label' => 'Stretched',
+										'url'   => ZAKRA_PARENT_INC_ICON_URI . '/sidebar-stretched.svg',
 									),
 								)
 							);
 
 							$sidebar_layout_choices = array(
-								'tg-site-layout--customizer' => array(
+								'customizer' => array(
 									'label' => '',
-									'url'   => ZAKRA_PARENT_URI . '/assets/img/icons/customizer.png',
+									'url'   => ZAKRA_PARENT_URI . '/assets/img/icons/customizer.svg',
 								),
 							) + $sidebar_layout_choices;
 
 							foreach ( $sidebar_layout_choices as $layout_id => $value ) :
+
 								?>
-								<label class="tg-label">
-									<input type="radio" name="zakra_layout" value="<?php echo esc_attr( $layout_id ); ?>>" <?php checked( $layout, $layout_id ); ?> />
+								<label class="zak-label">
+									<input type="radio" name="zakra_sidebar_layout" value="<?php echo esc_attr( $layout_id ); ?>>" <?php checked( $layout, $layout_id ); ?> />
 									<img src="<?php echo esc_url( $value['url'] ); ?>"/>
 								</label>
 							<?php endforeach; ?>
@@ -166,7 +167,7 @@ class Zakra_Meta_Box_Page_Settings {
 					<!-- CONTENT MARGIN -->
 					<div class="options-group">
 						<div class="zakra-ui-desc">
-							<label for="zakra-content-margin"><?php esc_html_e( 'Remove content margin', 'zakra' ); ?></label>
+							<label for="zakra-content-margin"><?php esc_html_e( 'Remove content padding', 'zakra' ); ?></label>
 						</div>
 						<div class="zakra-ui-field">
 							<input type="checkbox" id="zakra-content-margin" name="zakra_remove_content_margin" value="1" <?php checked( $remove_content_margin, 1 ); ?>>
@@ -182,13 +183,13 @@ class Zakra_Meta_Box_Page_Settings {
 							<select name="zakra_sidebar" id="zakra-sidebar">
 								<?php
 								$sidebars = array(
-									'default'          => __( 'Default', 'zakra' ),
-									'sidebar-right'    => __( 'Sidebar Right', 'zakra' ),
-									'sidebar-left'     => __( 'Sidebar Left', 'zakra' ),
-									'footer-sidebar-1' => __( 'Footer One', 'zakra' ),
-									'footer-sidebar-2' => __( 'Footer Two', 'zakra' ),
-									'footer-sidebar-3' => __( 'Footer Three', 'zakra' ),
-									'footer-sidebar-4' => __( 'Footer Four', 'zakra' ),
+									'default'       => __( 'Default', 'zakra' ),
+									'sidebar-right' => __( 'Sidebar Right', 'zakra' ),
+									'sidebar-left'  => __( 'Sidebar Left', 'zakra' ),
+									'1'             => __( 'Footer One', 'zakra' ),
+									'2'             => __( 'Footer Two', 'zakra' ),
+									'3'             => __( 'Footer Three', 'zakra' ),
+									'4'             => __( 'Footer Four', 'zakra' ),
 								);
 
 								foreach ( $sidebars as $sidebar_id => $sidebar_label ) :
@@ -215,15 +216,15 @@ class Zakra_Meta_Box_Page_Settings {
 							<label for="zakra-transparent-header"><?php esc_html_e( 'Enable Transparent Header', 'zakra' ); ?></label>
 						</div>
 						<div class="zakra-ui-field">
-							<label class="tg-buttonset">
+							<label class="zak-buttonset">
 								<input type="radio" name="zakra_transparent_header" value="customizer" <?php checked( $transparent_header, 'customizer' ); ?> />
 								<?php esc_html_e( 'Default', 'zakra' ); ?>
 							</label>
-							<label class="tg-buttonset">
+							<label class="zak-buttonset">
 								<input type="radio" name="zakra_transparent_header" value="1" <?php checked( $transparent_header, '1' ); ?> />
 								<?php esc_html_e( 'Enable', 'zakra' ); ?>
 							</label>
-							<label class="tg-buttonset">
+							<label class="zak-buttonset">
 								<input type="radio" name="zakra_transparent_header" value="0" <?php checked( $transparent_header, '0' ); ?> />
 								<?php esc_html_e( 'Disable', 'zakra' ); ?>
 							</label>
@@ -240,11 +241,11 @@ class Zakra_Meta_Box_Page_Settings {
 					<!-- LOGO -->
 					<div class="options-group">
 						<div class="zakra-ui-desc">
-							<label for="tg-logo"><?php esc_html_e( 'Logo', 'zakra' ); ?></label>
+							<label for="zak-logo"><?php esc_html_e( 'Logo', 'zakra' ); ?></label>
 						</div>
-						<div class="zakra-ui-field" id="tg-logo-wrapper">
+						<div class="zakra-ui-field" id="zak-logo-wrapper">
 
-							<div class="tg-upload-img">
+							<div class="zak-upload-img">
 								<?php if ( $has_img ) : ?>
 									<img src="<?php echo esc_url( $img_src[0] ); ?>" style="max-width:100%;"/>
 								<?php endif; ?>
@@ -261,7 +262,7 @@ class Zakra_Meta_Box_Page_Settings {
 								</a>
 							</p>
 
-							<input id="tg-logo" name="zakra_logo" class="tg-upload-input" type="hidden" value="
+							<input id="zak-logo" name="zakra_logo" class="zak-upload-input" type="hidden" value="
 							<?php
 							echo esc_attr( $logo );
 							?>
@@ -277,22 +278,22 @@ class Zakra_Meta_Box_Page_Settings {
 						<div class="zakra-ui-field">
 							<?php
 							$header_style_html  = '';
-							$header_style_html .= '<label class="tg-label">';
-							$header_style_html .= '<input type="radio" name="zakra_header_style" value="default" ' . checked( $header_style, 'default', false ) . '/>';
-							$header_style_html .= '<img src="' . esc_url( ZAKRA_PARENT_URI . '/assets/img/icons/customizer.png' ) . '" title="From Customizer"/>';
+							$header_style_html .= '<label class="zak-label">';
+							$header_style_html .= '<input type="radio" name="zakra_main_header_style" value="default" ' . checked( $header_style, 'default', false ) . '/>';
+							$header_style_html .= '<img src="' . esc_url( ZAKRA_PARENT_URI . '/assets/img/icons/customizer.svg' ) . '" title="From Customizer"/>';
 							$header_style_html .= '</label>';
-							$header_style_html .= '<label class="tg-label">';
-							$header_style_html .= '<input type="radio" name="zakra_header_style" value="tg-site-header--left" ' . checked( $header_style, 'tg-site-header--left', false ) . ' />';
-							$header_style_html .= '<img src="' . esc_url( ZAKRA_PARENT_URI . '/assets/img/icons/header-left.png' ) . '" title="Header Left"/>';
+							$header_style_html .= '<label class="zak-label">';
+							$header_style_html .= '<input type="radio" name="zakra_main_header_style" value="zak-layout-1-style-1" ' . checked( $header_style, 'zak-layout-1-style-1', false ) . ' />';
+							$header_style_html .= '<img src="' . esc_url( ZAKRA_PARENT_URI . '/assets/img/icons/header-left.svg' ) . '" title="Header Left"/>';
 							$header_style_html .= '</label>';
-							$header_style_html .= '<label class="tg-label">';
-							$header_style_html .= '<input type="radio" name="zakra_header_style" value="tg-site-header--center" ' . checked( $header_style, 'tg-site-header--center', false ) . '/>';
-							$header_style_html .= '<img src=" ' . esc_url( ZAKRA_PARENT_URI . '/assets/img/icons/header-center.png' ) . '" title="Header Center"/>';
+							$header_style_html .= '<label class="zak-label">';
+							$header_style_html .= '<input type="radio" name="zakra_main_header_style" value="zak-layout-1-style-2" ' . checked( $header_style, 'zak-layout-1-style-2', false ) . '/>';
+							$header_style_html .= '<img src=" ' . esc_url( ZAKRA_PARENT_URI . '/assets/img/icons/header-center.svg' ) . '" title="Header Center"/>';
 							$header_style_html .= '</label>';
 
-							$header_style_html .= '<label class="tg-label">';
-							$header_style_html .= '<input type="radio" name="zakra_header_style" value="tg-site-header--right" ' . checked( $header_style, 'tg-site-header--right', false ) . ' />';
-							$header_style_html .= '<img src=" ' . esc_url( ZAKRA_PARENT_URI . '/assets/img/icons/header-right.png' ) . '" title="Header Right" />';
+							$header_style_html .= '<label class="zak-label">';
+							$header_style_html .= '<input type="radio" name="zakra_main_header_style" value="zak-layout-1-style-3" ' . checked( $header_style, 'zak-layout-1-style-3', false ) . ' />';
+							$header_style_html .= '<img src=" ' . esc_url( ZAKRA_PARENT_URI . '/assets/img/icons/header-right.svg' ) . '" title="Header Right" />';
 							$header_style_html .= '</label>';
 							?>
 
@@ -331,7 +332,7 @@ class Zakra_Meta_Box_Page_Settings {
 							<label for="zakra-menu-item-color"><?php esc_html_e( 'Menu Item Color', 'zakra' ); ?></label>
 						</div>
 						<div class="zakra-ui-field">
-							<input class="tg-color-picker" type="text" name="zakra_menu_item_color"
+							<input class="zak-color-picker" type="text" name="zakra_menu_item_color"
 									id="zakra-menu-item-color"
 									value="<?php echo esc_attr( $menu_item_color ); ?>" data-default-color="<?php echo esc_attr( $customize_menu_item_color ); ?>"/>
 						</div>
@@ -343,7 +344,7 @@ class Zakra_Meta_Box_Page_Settings {
 							<label for="zakra-menu-item-hover-color"><?php esc_html_e( 'Menu Item Hover Color', 'zakra' ); ?></label>
 						</div>
 						<div class="zakra-ui-field">
-							<input class="tg-color-picker" type="text" name="zakra_menu_item_hover_color" id="zakra-menu-item-hover-color" value="<?php echo esc_attr( $menu_item_hover_color ); ?>" data-default-color="<?php echo esc_attr( $customize_menu_item_hover_color ); ?>"/>
+							<input class="zak-color-picker" type="text" name="zakra_menu_item_hover_color" id="zakra-menu-item-hover-color" value="<?php echo esc_attr( $menu_item_hover_color ); ?>" data-default-color="<?php echo esc_attr( $customize_menu_item_hover_color ); ?>"/>
 						</div>
 					</div>
 
@@ -353,40 +354,40 @@ class Zakra_Meta_Box_Page_Settings {
 							<label for="zakra-menu-item-active-color"><?php esc_html_e( 'Menu Item Active Color', 'zakra' ); ?></label>
 						</div>
 						<div class="zakra-ui-field">
-							<input class="tg-color-picker" type="text" name="zakra_menu_item_active_color" id="zakra-menu-item-active-color" value="<?php echo esc_attr( $menu_item_active_color ); ?>" data-default-color="<?php echo esc_attr( $customize_menu_item_active_color ); ?>" />
+							<input class="zak-color-picker" type="text" name="zakra_menu_item_active_color" id="zakra-menu-item-active-color" value="<?php echo esc_attr( $menu_item_active_color ); ?>" data-default-color="<?php echo esc_attr( $customize_menu_item_active_color ); ?>" />
 						</div>
 					</div>
 
 					<!-- ACTIVE MENU ITEM STYLE -->
 					<div class="options-group show-default">
 						<div class="zakra-ui-desc">
-							<label for="zakra_menu_item_active_style"><?php esc_html_e( 'Active Menu Item Style', 'zakra' ); ?></label>
+							<label for="zakra_menu_active_style"><?php esc_html_e( 'Active Menu Item Style', 'zakra' ); ?></label>
 						</div>
 						<div class="zakra-ui-field">
-							<select name="zakra_menu_item_active_style" id="zakra-menu-item-active-style">
+							<select name="zakra_menu_active_style" id="zakra-menu-item-active-style">
 								<option value="" <?php selected( $menu_item_active_style, '' ); ?>><?php esc_html_e( 'Default', 'zakra' ); ?></option>
-								<option value="tg-primary-menu--style-none" <?php selected( $menu_item_active_style, 'tg-primary-menu--style-none' ); ?>><?php esc_html_e( 'None', 'zakra' ); ?></option>
-								<option value="tg-primary-menu--style-underline" 
+								<option value="style-1" <?php selected( $menu_item_active_style, 'style-1' ); ?>><?php esc_html_e( 'None', 'zakra' ); ?></option>
+								<option value="style-2"
 								<?php
 								selected(
 									$menu_item_active_style,
-									'tg-primary-menu--style-underline'
+									'style-2'
 								);
 								?>
 										><?php esc_html_e( 'Underline Border', 'zakra' ); ?></option>
-								<option value="tg-primary-menu--style-left-border" 
+								<option value="style-3"
 								<?php
 								selected(
 									$menu_item_active_style,
-									'tg-primary-menu--style-left-border'
+									'style-3'
 								);
 								?>
 										><?php esc_html_e( 'Left Border', 'zakra' ); ?></option>
-								<option value="tg-primary-menu--style-right-border" 
+								<option value="style-4"
 								<?php
 								selected(
 									$menu_item_active_style,
-									'tg-primary-menu--style-right-border'
+									'style-4'
 								);
 								?>
 										><?php esc_html_e( 'Right Border', 'zakra' ); ?></option>
@@ -449,40 +450,40 @@ class Zakra_Meta_Box_Page_Settings {
 	 * @param int $post_id Post ID.
 	 */
 	public static function save( $post_id ) {
-		$layout                           = isset( $_POST['zakra_layout'] ) ? sanitize_key( $_POST['zakra_layout'] ) : 'default'; // phpcs:ignore WordPress.Security.NonceVerification
+		$layout                           = isset( $_POST['zakra_sidebar_layout'] ) ? sanitize_key( $_POST['zakra_sidebar_layout'] ) : 'default'; // phpcs:ignore WordPress.Security.NonceVerification
 		$remove_content_margin            = ( isset( $_POST['zakra_remove_content_margin'] ) && '1' === $_POST['zakra_remove_content_margin'] ) ? 1 : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		$sidebar                          = isset( $_POST['zakra_sidebar'] ) ? sanitize_key( $_POST['zakra_sidebar'] ) : 'default'; // phpcs:ignore WordPress.Security.NonceVerification
 		$transparent_header               = isset( $_POST['zakra_transparent_header'] ) ? sanitize_key( $_POST['zakra_transparent_header'] ) : 'customizer'; // phpcs:ignore WordPress.Security.NonceVerification
-		$customize_menu_item_color        = get_theme_mod( 'zakra_primary_menu_text_color', '#16181a' );
+		$customize_menu_item_color        = get_theme_mod( 'zakra_main_menu_color', '#16181a' );
 		$menu_item_color                  = isset( $_POST['zakra_menu_item_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['zakra_menu_item_color'] ) ) : $customize_menu_item_color; // phpcs:ignore WordPress.Security.NonceVerification
-		$customize_menu_item_hover_color  = get_theme_mod( 'zakra_primary_menu_text_hover_color', '#269bd1' );
+		$customize_menu_item_hover_color  = get_theme_mod( 'zakra_main_menu_hover_color', '#027abb' );
 		$menu_item_hover_color            = isset( $_POST['zakra_menu_item_hover_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['zakra_menu_item_hover_color'] ) ) : $customize_menu_item_hover_color; // phpcs:ignore WordPress.Security.NonceVerification
-		$customize_menu_item_active_color = get_theme_mod( 'zakra_primary_menu_text_active_color', '#269bd1' );
+		$customize_menu_item_active_color = get_theme_mod( 'zakra_main_menu_active_color', '#027abb' );
 		$menu_item_active_color           = isset( $_POST['zakra_menu_item_active_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['zakra_menu_item_active_color'] ) ) : $customize_menu_item_active_color; // phpcs:ignore WordPress.Security.NonceVerification
-		$menu_item_active_style           = isset( $_POST['zakra_menu_item_active_style'] ) ? sanitize_key( $_POST['zakra_menu_item_active_style'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		$menu_item_active_style           = isset( $_POST['zakra_menu_active_style'] ) ? sanitize_key( $_POST['zakra_menu_active_style'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 
 		$page_header  = ( isset( $_POST['zakra_page_header'] ) && '1' === $_POST['zakra_page_header'] ) ? 1 : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		$logo         = ( isset( $_POST['zakra_logo'] ) ) ? intval( $_POST['zakra_logo'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-		$header_style = isset( $_POST['zakra_header_style'] ) ? sanitize_key( $_POST['zakra_header_style'] ) : 'default'; // phpcs:ignore WordPress.Security.NonceVerification
+		$header_style = isset( $_POST['zakra_main_header_style'] ) ? sanitize_key( $_POST['zakra_main_header_style'] ) : 'default'; // phpcs:ignore WordPress.Security.NonceVerification
 
 		// TODO: Refactor this array. Create a member variable for $sidebar_layout_choices and manipulate it here.
 		// LAYOUT.
 		if ( in_array(
 			$layout,
 			array(
-				'tg-site-layout--customizer',
-				'tg-site-layout--default',
-				'tg-site-layout--left',
-				'tg-site-layout--right',
-				'tg-site-layout--no-sidebar',
-				'tg-site-layout--stretched',
-				'tg-site-layout--2-sidebars',
+				'customizer',
+				'default',
+				'left',
+				'right',
+				'centered',
+				'stretched',
+				'contained',
 			),
 			true
 		) ) {
-			update_post_meta( $post_id, 'zakra_layout', $layout );
+			update_post_meta( $post_id, 'zakra_sidebar_layout', $layout );
 		} else {
-			delete_post_meta( $post_id, 'zakra_layout' );
+			delete_post_meta( $post_id, 'zakra_sidebar_layout' );
 		}
 
 		// CONTENT MARGIN.
@@ -494,10 +495,10 @@ class Zakra_Meta_Box_Page_Settings {
 			array(
 				'sidebar-right',
 				'sidebar-left',
-				'footer-sidebar-1',
-				'footer-sidebar-2',
-				'footer-sidebar-3',
-				'footer-sidebar-4',
+				'1',
+				'2',
+				'3',
+				'4',
 			),
 			true
 		) ) {
@@ -544,16 +545,16 @@ class Zakra_Meta_Box_Page_Settings {
 		if ( in_array(
 			$menu_item_active_style,
 			array(
-				'tg-primary-menu--style-none',
-				'tg-primary-menu--style-underline',
-				'tg-primary-menu--style-left-border',
-				'tg-primary-menu--style-right-border',
+				'style-1',
+				'style-2',
+				'style-3',
+				'style-4',
 			),
 			true
 		) ) {
-			update_post_meta( $post_id, 'zakra_menu_item_active_style', $menu_item_active_style );
+			update_post_meta( $post_id, 'zakra_menu_active_style', $menu_item_active_style );
 		} else {
-			delete_post_meta( $post_id, 'zakra_menu_item_active_style' );
+			delete_post_meta( $post_id, 'zakra_menu_active_style' );
 		}
 
 		// PAGE HEADER.
@@ -565,17 +566,17 @@ class Zakra_Meta_Box_Page_Settings {
 		$header_style_arr = apply_filters(
 			'zakra_header_style_meta_save',
 			array(
-				'tg-site-header--left',
-				'tg-site-header--center',
-				'tg-site-header--right',
+				'zak-layout-1-style-1',
+				'zak-layout-1-style-2',
+				'zak-layout-1-style-3',
 			)
 		);
 
 		// HEADER STYLE.
 		if ( in_array( $header_style, $header_style_arr, true ) ) {
-			update_post_meta( $post_id, 'zakra_header_style', $header_style );
+			update_post_meta( $post_id, 'zakra_main_header_style', $header_style );
 		} else {
-			delete_post_meta( $post_id, 'zakra_header_style' );
+			delete_post_meta( $post_id, 'zakra_main_header_style' );
 		}
 
 		/**

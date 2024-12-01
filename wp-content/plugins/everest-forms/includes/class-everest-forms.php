@@ -21,7 +21,7 @@ final class EverestForms {
 	 *
 	 * @var string
 	 */
-	public $version = '1.9.9';
+	public $version = '3.0.4.2';
 
 	/**
 	 * The single instance of the class.
@@ -46,6 +46,30 @@ final class EverestForms {
 	public $form;
 
 	/**
+	 * The form task handler instance.
+	 *
+	 * @var EVF_Form_Task
+	 */
+	public $task;
+
+
+	/**
+	 * The smart tags handler instance.
+	 *
+	 * @var EVF_Smart_Tags
+	 */
+	public $smart_tags;
+
+	/**
+	 * The reporting handler instance.
+	 *
+	 * @since 2.0.9
+	 *
+	 * @var EVF_Reporting
+	 */
+	public $reporting;
+
+	/**
 	 * The entry data handler instance.
 	 *
 	 * @var EVF_Entry_Handler
@@ -67,6 +91,14 @@ final class EverestForms {
 	 * @var EVF_Integrations
 	 */
 	public $integrations = null;
+
+	/**
+	 * UTM Campaign.
+	 *
+	 * @since 2.0.8.1
+	 * @var string
+	 */
+	public $utm_campaign = 'lite-version';
 
 	/**
 	 * Array of deprecated hook handlers.
@@ -255,6 +287,9 @@ final class EverestForms {
 		include_once EVF_ABSPATH . 'includes/abstracts/class-evf-session.php';
 		include_once EVF_ABSPATH . 'includes/abstracts/class-evf-form-fields.php';
 
+		if ( ( defined( 'EFP_VERSION' ) && version_compare( EFP_VERSION, '1.7.5', '>=' ) ) || ( defined( 'EVF_VERSION' ) && version_compare( EVF_VERSION, '3.0.0', '>=' ) && ! defined( 'EFP_VERSION' ) ) ) {
+			include_once EVF_ABSPATH . 'includes/abstracts/class-evf-form-fields-upload.php';
+		}
 		/**
 		 * Core classes.
 		 */
@@ -262,14 +297,28 @@ final class EverestForms {
 		include_once EVF_ABSPATH . 'includes/class-evf-post-types.php';
 		include_once EVF_ABSPATH . 'includes/class-evf-install.php';
 		include_once EVF_ABSPATH . 'includes/class-evf-ajax.php';
+		include_once EVF_ABSPATH . 'includes/class-evf-ajax.php';
 		include_once EVF_ABSPATH . 'includes/class-evf-emails.php';
-		include_once EVF_ABSPATH . 'includes/class-evf-form-block.php';
 		include_once EVF_ABSPATH . 'includes/class-evf-integrations.php';
 		include_once EVF_ABSPATH . 'includes/class-evf-cache-helper.php';
 		include_once EVF_ABSPATH . 'includes/class-evf-deprecated-action-hooks.php';
 		include_once EVF_ABSPATH . 'includes/class-evf-deprecated-filter-hooks.php';
 		include_once EVF_ABSPATH . 'includes/class-evf-forms-features.php';
 		include_once EVF_ABSPATH . 'includes/class-evf-privacy.php';
+
+		/**
+		 * Everest forms blocks class.
+		 */
+		include_once EVF_ABSPATH . 'includes/blocks/class-evf-blocks.php';
+		/**
+		 * Rest api classes.
+		 */
+		include_once EVF_ABSPATH . 'includes/RestApi/class-evf-rest-api.php';
+
+		/**
+		 * Preview Confirmation Class
+		 */
+		include_once EVF_ABSPATH . 'includes/admin/class-evf-admin-preview-confirmation.php';
 
 		/**
 		 * Elementor classes.
@@ -280,6 +329,7 @@ final class EverestForms {
 
 		if ( $this->is_request( 'admin' ) ) {
 			include_once EVF_ABSPATH . 'includes/admin/class-evf-admin.php';
+			include_once EVF_ABSPATH . 'includes/admin/class-evf-admin-embed-wizard.php';
 		}
 
 		if ( $this->is_request( 'frontend' ) ) {
@@ -291,6 +341,13 @@ final class EverestForms {
 		 */
 		include_once EVF_ABSPATH . 'includes/class-evf-cron.php';
 		include_once EVF_ABSPATH . 'includes/stats/class-evf-stats.php';
+
+		/**
+		 * External Libraries
+		 *
+		 * @return void
+		 */
+		include_once EVF_ABSPATH . 'includes/libraries/wptt-webfont-loader.php';
 	}
 
 	/**
@@ -349,6 +406,7 @@ final class EverestForms {
 		$this->form       = new EVF_Form_Handler();
 		$this->task       = new EVF_Form_Task();
 		$this->smart_tags = new EVF_Smart_Tags();
+		$this->reporting  = new EVF_Reporting();
 	}
 
 	/**

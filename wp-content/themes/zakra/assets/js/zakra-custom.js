@@ -6,40 +6,37 @@
  */
 
 var ZakraFrontend = {
-	toggleMenu: function( handleEl, targetEl, overlayWrapper, closeButton, toggleButton ) {
+  toggleMenu: function (
+    handleEl,
+    targetEl,
+    overlayWrapper,
+    closeButton,
+    toggleButton,
+  ) {
+    handleEl.addEventListener("click", function () {
+      this.classList.toggle("zak-mobile-toggle--opened");
+      targetEl.classList.toggle("zak-mobile-nav--opened");
 
-		handleEl.addEventListener(
-			'click',
-			function() {
-				this.classList.toggle( 'tg-mobile-toggle--opened' );
-				targetEl.classList.toggle( 'tg-mobile-navigation--opened' );
+      if (overlayWrapper) {
+        overlayWrapper.classList.toggle("overlay-show");
+      }
 
-				if ( overlayWrapper ) {
-					overlayWrapper.classList.toggle( 'overlay-show' );
-				}
+      // Mobile menu close button.
+      if (!targetEl.getElementsByClassName("zak-mobile-nav-close").length) {
+        // Insert the close icon as first child of menu.
+        targetEl.insertBefore(closeButton, targetEl.childNodes[0]);
+      }
+    });
 
-				// Mobile menu close button.
-				if ( ! targetEl.getElementsByClassName( 'tg-mobile-navigation-close' ).length ) {
-
-					// Insert the close icon as first child of menu.
-					targetEl.insertBefore( closeButton, targetEl.childNodes[0] );
-				}
-			}
-		);
-
-		// Close menu when clicked outside.
-		if ( overlayWrapper ) {
-			overlayWrapper.addEventListener(
-				'click',
-				function() {
-					this.classList.toggle( 'overlay-show' );
-					toggleButton.classList.toggle( 'tg-mobile-toggle--opened' );
-					targetEl.classList.toggle( 'tg-mobile-navigation--opened' );
-				}
-			);
-		}
-
-	}
+    // Close menu when clicked outside.
+    if (overlayWrapper) {
+      overlayWrapper.addEventListener("click", function () {
+        this.classList.toggle("overlay-show");
+        toggleButton.classList.toggle("zak-mobile-toggle--opened");
+        targetEl.classList.toggle("zak-mobile-nav--opened");
+      });
+    }
+  },
 };
 
 window.zakraFrontend = ZakraFrontend;
@@ -47,338 +44,381 @@ window.zakraFrontend = ZakraFrontend;
 /**
  * Only run scrips when the page is fully loaded.
  */
-document.addEventListener(
-	'DOMContentLoaded',
-	function() {
-		function mobileNavigation() {
-			var menu           = document.getElementById( 'mobile-navigation' ),
-				toggleButton   = document.querySelector( '.tg-mobile-toggle' ),
-				overlayWrapper = document.querySelector( '.tg-overlay-wrapper' ),
-				adminBar       = document.getElementById( 'wpadminbar' ),
-				adminBarHeight,
-				listItems,
-				listItem,
-				subMenuButton,
-				subMenuToggle,
-				closeButton,
-				menuStyle,
-				menuPaddingTop,
-				i,
-				focusableSelectors,
-				focusableEl,
-				firstEl,
-				lastEl;
+document.addEventListener("DOMContentLoaded", function () {
+  function mobileNavigation() {
+    var menu = document.getElementById("zak-mobile-nav"),
+      secondaryMenu = document.getElementById("secondary-menu"),
+      toggleButton = document.querySelector(".zak-menu-toggle"),
+      overlayWrapper = document.querySelector(".zak-overlay-wrapper"),
+      adminBar = document.getElementById("wpadminbar"),
+      adminBarHeight,
+      listItems,
+      secondaryMenuListItems,
+      secondaryMenuListItem,
+      listItem,
+      subMenuToggle,
+      closeButton,
+      i,
+      focusableSelectors,
+      focusableEl,
+      firstEl,
+      lastEl;
 
-			// Create close icon element.
-			closeButton = document.createElement( 'button' );
-			closeButton.classList.add( 'tg-mobile-navigation-close' );
-			closeButton.setAttribute( 'aria-label', 'Close Button' );
+    // Create close icon element.
+    closeButton = document.getElementById("zak-mobile-nav-close");
 
-			if ( menu ) {
-				listItems = menu.querySelectorAll(
-					'li.page_item_has_children, li.menu-item-has-children'
-				);
+    document
+      .querySelector(".zak-mobile-nav")
+      .addEventListener("click", function (e) {
+        if (e.target.tagName === "A") {
+          toggleButton.click();
+        }
+      });
 
-				if ( document.body.contains( adminBar ) ) {
-					adminBarHeight = adminBar.getBoundingClientRect().height;
-					menuStyle      = getComputedStyle( menu );
-					menuPaddingTop = parseInt( menuStyle.paddingTop ) + adminBarHeight;
+    if (menu) {
+      listItems = menu.querySelectorAll(
+        "li.page_item_has_children, li.menu-item-has-children",
+      );
 
-					closeButton.style.top = adminBarHeight + 'px';
-					menu.style.paddingTop = menuPaddingTop + 'px';
-				}
-			}
+      if (document.body.contains(adminBar)) {
+        adminBarHeight = adminBar.getBoundingClientRect().height;
+      }
+    }
 
-			// Toggle mobile menu.
-			if ( toggleButton && menu ) {
-				closeButton.addEventListener(
-					'click',
-					function() {
-						toggleButton.click();
-					}
-				);
+    if (secondaryMenu) {
+      secondaryMenuListItems = secondaryMenu.querySelectorAll(
+        "li.page_item_has_children, li.menu-item-has-children",
+      );
 
-				zakraFrontend.toggleMenu( toggleButton, menu, overlayWrapper, closeButton, toggleButton );
+      if (document.body.contains(adminBar)) {
+        adminBarHeight = adminBar.getBoundingClientRect().height;
+      }
+    }
 
-				toggleButton.addEventListener(
-					'click',
-					function() {
-						focusableSelectors = 'a, button, input[type="search"]';
-						focusableEl        = menu.querySelectorAll( focusableSelectors );
-						focusableEl        = Array.prototype.slice.call( focusableEl );
+    // Toggle mobile menu.
+    if (toggleButton && menu) {
+      closeButton.addEventListener("click", function () {
+        toggleButton.click();
+      });
 
-						firstEl = focusableEl[0];
-						lastEl  = focusableEl[focusableEl.length - 1];
+      zakraFrontend.toggleMenu(
+        toggleButton,
+        menu,
+        overlayWrapper,
+        closeButton,
+        toggleButton,
+      );
 
-						// Set focus to first element.
-						setTimeout(
-							function() {
-								firstEl.focus();
-							},
-							100
-						);
+      /**
+       * Open mobile menu on clicking toggle button.
+       */
+      toggleButton.addEventListener("click", function () {
+        focusableSelectors = 'a, button, input[type="search"]';
+        focusableEl = menu.querySelectorAll(focusableSelectors);
+        focusableEl = Array.prototype.slice.call(focusableEl);
 
-						// Loop focus while using tab and shift+tab key.
-						menu.addEventListener(
-							'keydown',
-							function( e ) {
-								if ( 'Tab' === e.key ) {
-									if ( e.shiftKey ) {
-										if ( document.activeElement === firstEl ) {
-											e.preventDefault();
-											lastEl.focus();
-										}
-									} else {
-										if ( document.activeElement === lastEl ) {
-											e.preventDefault();
-											firstEl.focus();
-										}
-									}
-								}
-							}
-						);
-					}
-				);
-			}
+        firstEl = focusableEl[0];
+        lastEl = focusableEl[focusableEl.length - 1];
 
-			/* Sub Menu toggle */
-			if ( listItems ) {
-				var submenuCount = listItems.length;
-				for ( i = 0; i < submenuCount; i++ ) {
+        // Set focus to first element.
+        setTimeout(function () {
+          firstEl.focus();
+        }, 100);
 
-					/* Add submenu toggle button */
-					subMenuButton = document.createElement( 'button' );
-					subMenuButton.classList.add( 'tg-submenu-toggle' );
+        // Loop focus while using tab and shift+tab key.
+        menu.addEventListener("keydown", function (e) {
+          if ("Tab" === e.key) {
+            if (e.shiftKey) {
+              if (document.activeElement === firstEl) {
+                e.preventDefault();
+                lastEl.focus();
+              }
+            } else {
+              if (document.activeElement === lastEl) {
+                e.preventDefault();
+                firstEl.focus();
+              }
+            }
+          }
+        });
+      });
+    }
 
-					listItem = listItems[i];
-					listItem.insertBefore( subMenuButton, listItem.childNodes[1] );
+    /* Sub Menu toggle */
+    if (listItems) {
+      let submenuCount = listItems.length;
 
-					/* Select the subMenutoggle */
-					subMenuToggle = listItem.querySelector( '.tg-submenu-toggle' );
+      for (i = 0; i < submenuCount; i++) {
+        listItem = listItems[i];
 
-					if ( null !== subMenuToggle ) {
-						subMenuToggle.addEventListener(
-							'click',
-							function( e ) {
-								e.preventDefault();
-								this.parentNode.classList.toggle( 'submenu--show' );
-							}
-						);
-					}
+        subMenuToggle = listItem.querySelector(".zak-submenu-toggle");
 
-					if ( null !== listItem.querySelector( 'a' ) ) {
-						var link          = listItem.querySelector( 'a' ).getAttribute( 'href' );
-						var listItem_link = listItem.querySelector( 'a' );
+        if (null !== subMenuToggle) {
+          subMenuToggle.addEventListener("click", function (e) {
+            e.preventDefault();
 
-						if ( ! link || '#' === link ) {
-							listItem_link.addEventListener(
-								'click',
-								function( e ) {
-									menu.classList.toggle( 'tg-mobile-navigation--opened' );
-									this.parentNode.classList.toggle( 'submenu--show' );
-								}
-							);
-						}
-					}
-				}
-			}
-		}
+            this.parentNode.classList.toggle("submenu--show");
+          });
+        }
 
-		/**
-		 * Scroll to top button.
-		 */
-		function scrollToTop() {
-			var scrollToTopButton = document.getElementById( 'tg-scroll-to-top' );
+        if (null !== listItem.querySelector("a")) {
+          var link = listItem.querySelector("a").getAttribute("href");
+          var listItem_link = listItem.querySelector("a");
 
-			/* Only proceed when the button is present. */
-			if ( scrollToTopButton ) {
+          if (!link || "#" === link) {
+            listItem_link.addEventListener("click", function (e) {
+              // menu.classList.toggle( 'zak-mobile-nav--opened' );
+              this.parentNode.classList.toggle("submenu--show");
+            });
+          }
+        }
+      }
+    }
 
-				/* On scroll and show and hide button. */
-				window.addEventListener(
-					'scroll',
-					function() {
-						if ( 500 < window.scrollY ) {
-							scrollToTopButton.classList.add( 'tg-scroll-to-top--show' );
-						} else if ( 500 > window.scrollY ) {
-							scrollToTopButton.classList.remove(
-								'tg-scroll-to-top--show'
-							);
-						}
-					}
-				);
+    /* Secondary Sub Menu toggle */
+    if (secondaryMenuListItems) {
+      let submenuCount = secondaryMenuListItems.length;
 
-				/* Scroll to top when clicked on button. */
-				scrollToTopButton.addEventListener(
-					'click',
-					function( e ) {
-						e.preventDefault();
+      for (i = 0; i < submenuCount; i++) {
+        secondaryMenuListItem = secondaryMenuListItems[i];
 
-						/* Only scroll to top if we are not in top */
-						if ( 0 !== window.scrollY ) {
-							window.scrollTo(
-								{
-									top: 0,
-									behavior: 'smooth'
-								}
-							);
-						}
-					}
-				);
-			}
-		}
+        subMenuToggle = secondaryMenuListItem.querySelector(
+          ".zak-submenu-toggle",
+        );
 
-		try {
-			mobileNavigation();
-		} catch ( e ) {
-			console.log( e.message );
-		}
+        if (null !== subMenuToggle) {
+          subMenuToggle.addEventListener("click", function (e) {
+            e.preventDefault();
 
-		scrollToTop();
+            this.parentNode.classList.toggle("zak-submenu--show");
+          });
+        }
 
-		/**
-		 * Search form.
-		 */
-		(
-			function() {
-				var searchIcon, searchBox, getClosest;
+        if (null !== secondaryMenuListItem.querySelector("a")) {
+          var link = secondaryMenuListItem
+            .querySelector("a")
+            .getAttribute("href");
+          var listItem_link = secondaryMenuListItem.querySelector("a");
 
-				searchIcon = document.querySelector( '.header-action-list .tg-menu-item-search > a' );
-				searchBox  = document.querySelector( '.header-action-list .tg-menu-item-search' );
+          if (!link || "#" === link) {
+            listItem_link.addEventListener("click", function (e) {
+              // menu.classList.toggle( 'zak-mobile-nav--opened' );
+              this.parentNode.classList.toggle("submenu--show");
+            });
+          }
+        }
+      }
+    }
+  }
 
-				getClosest = function( elem, selector ) {
+  /**
+   * Scroll to top button.
+   */
+  function scrollToTop() {
+    var scrollToTopButton = document.getElementById("zak-scroll-to-top");
 
-					// Element.matches() polyfill
-					if ( ! Element.prototype.matches ) {
-						Element.prototype.matches =
-							Element.prototype.matchesSelector ||
-							Element.prototype.mozMatchesSelector ||
-							Element.prototype.msMatchesSelector ||
-							Element.prototype.oMatchesSelector ||
-							Element.prototype.webkitMatchesSelector ||
-							function( s ) {
-								var matches = ( this.document || this.ownerDocument ).querySelectorAll( s ),
-									i       = matches.length;
+    /* Only proceed when the button is present. */
+    if (scrollToTopButton) {
+      /* On scroll and show and hide button. */
+      window.addEventListener("scroll", function () {
+        if (500 < window.scrollY) {
+          scrollToTopButton.classList.add("zak-scroll-to-top--show");
+        } else if (500 > window.scrollY) {
+          scrollToTopButton.classList.remove("zak-scroll-to-top--show");
+        }
+      });
 
-								while ( 0 <= --i && matches.item( i ) !== this ) { // TODO: Check and remove this empty loop
-								}
+      /* Scroll to top when clicked on button. */
+      scrollToTopButton.addEventListener("click", function (e) {
+        e.preventDefault();
 
-								return -1 < i;
-							};
-					}
+        /* Only scroll to top if we are not in top */
+        if (0 !== window.scrollY) {
+          window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+          });
+        }
+      });
+    }
+  }
 
-					// Get the closest matching element.
-					for ( ; elem && elem !== document; elem = elem.parentNode ) {
-						if ( elem.matches( selector ) ) {
-							return elem;
-						}
-					}
+  try {
+    mobileNavigation();
+  } catch (e) {
+    console.log(e.message);
+  }
 
-					return null;
+  scrollToTop();
 
-				};
+  /**
+   * Search form.
+   */
+  (function () {
+    let searchIcon,
+      searchBox,
+      getClosest,
+      closeIcon,
+      contentBackDrop,
+      footerBackDrop;
 
-				/**
-				 * Show hide search form.
-				 */
-				function showHideSearchForm( action ) {
+    searchIcon = document.querySelector(".zak-header-search__toggle");
+    searchBox = document.querySelector(".zak-main-header");
+    contentBackDrop = document.querySelector(".zak-content");
+    footerBackDrop = document.querySelector(".zak-footer");
+    closeIcon = document.querySelector(".zak-header-search .zak-icon--close");
 
-					// Hide search form.
-					if ( 'hide' === action ) {
-						searchBox.classList.remove( 'show-search' );
-						return;
-					}
+    getClosest = function (elem, selector) {
+      // Element.matches() polyfill
+      if (!Element.prototype.matches) {
+        Element.prototype.matches =
+          Element.prototype.matchesSelector ||
+          Element.prototype.mozMatchesSelector ||
+          Element.prototype.msMatchesSelector ||
+          Element.prototype.oMatchesSelector ||
+          Element.prototype.webkitMatchesSelector ||
+          function (s) {
+            var matches = (
+                this.document || this.ownerDocument
+              ).querySelectorAll(s),
+              i = matches.length;
 
-					// Toggle search form.
-					searchBox.classList.toggle( 'show-search' );
+            while (0 <= --i && matches.item(i) !== this) {
+              // TODO: Check and remove this empty loop
+            }
 
-					// Autofocus.
-					if ( searchBox.classList.contains( 'show-search' ) ) {
-						searchBox.getElementsByTagName( 'input' )[0].focus();
+            return -1 < i;
+          };
+      }
 
-						document.querySelector( '.tg-menu-item-search' ).addEventListener(
-							'keydown',
-							function( e ) {
+      // Get the closest matching element.
+      for (; elem && elem !== document; elem = elem.parentNode) {
+        if (elem.matches(selector)) {
+          return elem;
+        }
+      }
 
-								if ( ! e.shiftKey && ( 'Tab' === e.key ) && ( document.activeElement === searchBox.getElementsByTagName( 'input' )[0] ) ) {
-									e.preventDefault();
-									searchIcon.focus();
-								}
+      return null;
+    };
 
-								if ( e.shiftKey && ( 'Tab' === e.key ) && ( document.activeElement === searchIcon ) && searchBox.classList.contains( 'show-search' ) ) {
-									e.preventDefault();
-									searchBox.getElementsByTagName( 'input' )[0].focus();
-								}
-							}
-						);
-					}
-				}
+    /**
+     * Show hide search form.
+     */
+    function showHideSearchForm(action) {
+      // Hide search form.
+      if ("hide" === action) {
+        searchBox.classList.remove("zak-header-search--opened");
+        contentBackDrop.classList.remove("backdrop");
+        footerBackDrop.classList.remove("backdrop");
 
-				// If icon exists.
-				if ( null !== searchIcon ) {
-					// on search icon click.
-					searchIcon.addEventListener(
-						'click',
-						function( ev ) {
-							ev.preventDefault();
-							showHideSearchForm();
-						}
-					);
+        return;
+      }
 
-					// on click outside form.
-					document.addEventListener(
-						'click',
-						function( ev ) {
-							var closest = typeof( ev.target.closest );
+      // Toggle search form.
+      searchBox.classList.toggle("zak-header-search--opened");
+      contentBackDrop.classList.toggle("backdrop");
+      footerBackDrop.classList.toggle("backdrop");
 
-							switch ( closest ) {
-								case 'undefined':
-									if ( getClosest( ev.target, '.tg-menu-item-search' ) || getClosest( ev.target, '.tg-icon-search' ) ) {
-										return;
-									}
-								break;
+      // Autofocus.
+      if (searchBox.classList.contains("zak-header-search--opened")) {
+        setTimeout(function () {
+          console.log(  );
+          searchBox.getElementsByTagName("input")[0].focus();
+        }, 300);
 
-								default:
-									if ( ev.target.closest( '.tg-menu-item-search' ) || ev.target.closest( '.tg-icon-search' ) ) { // TODO: Unresolved function closest.
-										return;
-									}
-								break;
-							}
-							showHideSearchForm( 'hide' );
-						}
-					);
+        document
+          .querySelector(".zak-search-container")
+          .addEventListener("keydown", function (e) {
+            let element = document
+                .querySelector(".zak-search-container")
+                .querySelectorAll('input[type="search"],button'),
+              firstElement = element[0],
+              lastElement = element[element.length - 1],
+              tab = e.keyCode === 9 || e.key === "Tab";
 
-					// on esc key.
-					document.addEventListener(
-						'keyup',
-						function( e ) {
-							if ( searchBox.classList.contains( 'show-search' ) && 'Escape' === e.key ) {
-								showHideSearchForm( 'hide' );
-							}
-						}
-					);
-				}
-			}()
-		);
+            if (!tab) {
+              return;
+            }
 
-		/**
-		 * Transparent Header.
-		 */
-		var body      = document.getElementsByTagName( 'body' )[0],
-			headerTop = body.getElementsByClassName( 'tg-site-header-top' )[0];
+            if (e.shiftKey) {
+              if (document.activeElement === firstElement) {
+                e.preventDefault();
+                lastElement.focus();
+              }
+            } else if (document.activeElement === lastElement) {
+              e.preventDefault();
+              firstElement.focus();
+            }
+          });
+      }
+    }
 
-		function transparentHeader( body, headerTop ) {
-			var headerTopHt = headerTop.offsetHeight,
-				main        = document.getElementById( 'main' ),
-				footer      = document.getElementById( 'colophon' );
+    // If icon exists.
+    if (null !== searchIcon) {
+      // On search icon click.
+      searchIcon.addEventListener("click", function (ev) {
+        ev.preventDefault();
 
-			main.style.position   = 'relative';
-			main.style.top        = headerTopHt + 'px';
-			footer.style.position = 'relative';
-			footer.style.top      = headerTopHt + 'px';
-		}
+        showHideSearchForm();
+      });
 
-		if ( body.classList.contains( 'has-transparent-header' ) && ( 'undefined' != typeof headerTop ) && headerTop.classList.contains( 'tg-site-header-top' ) ) {
-			transparentHeader( body, headerTop );
-		}
-	}
-);
+      // On close icon click.
+      closeIcon.addEventListener("click", function (e) {
+        searchBox.classList.remove("zak-header-search--opened");
+        contentBackDrop.classList.remove("backdrop");
+        footerBackDrop.classList.remove("backdrop");
+
+        return;
+      });
+
+      // on click outside form.
+      document.addEventListener("click", function (ev) {
+        var closest = typeof ev.target.closest;
+
+        if (
+          ev.target.closest(".zak-main-header") ||
+          ev.target.closest(".zak-icon-search")
+        ) {
+          return;
+        }
+
+        showHideSearchForm("hide");
+      });
+
+      // on esc key.
+      document.addEventListener("keyup", function (e) {
+        if (
+          searchBox.classList.contains("zak-header-search--opened") &&
+          "Escape" === e.key
+        ) {
+          showHideSearchForm("hide");
+        }
+      });
+    }
+  })();
+
+  /**
+   * Transparent Header.
+   */
+  var body = document.getElementsByTagName("body")[0],
+    headerTop = body.getElementsByClassName(".zak-top-bar")[0];
+
+  function transparentHeader(body, headerTop) {
+    var headerTopHt = headerTop.offsetHeight,
+      main = document.getElementById("main"),
+      footer = document.getElementById("zak-footer");
+
+    main.style.position = "relative";
+    main.style.top = headerTopHt + "px";
+    footer.style.position = "relative";
+    footer.style.top = headerTopHt + "px";
+  }
+
+  if (
+    body.classList.contains("has-transparent-header") &&
+    "undefined" != typeof headerTop &&
+    headerTop.classList.contains(".zak-top-bar")
+  ) {
+    transparentHeader(body, headerTop);
+  }
+});

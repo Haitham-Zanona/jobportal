@@ -5,7 +5,7 @@
  * Description: Extension for All-in-One WP Migration that enables unlimited size exports and imports
  * Author: ServMask
  * Author URI: https://servmask.com/
- * Version: 2.49
+ * Version: 2.63
  * Text Domain: all-in-one-wp-migration-unlimited-extension
  * Domain Path: /languages
  * Network: True
@@ -32,7 +32,14 @@
  * ███████║███████╗██║  ██║ ╚████╔╝ ██║ ╚═╝ ██║██║  ██║███████║██║  ██╗
  * ╚══════╝╚══════╝╚═╝  ╚═╝  ╚═══╝  ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
  */
-
+delete_option('ai1wm_updater');
+add_filter( 'pre_http_request', function( $pre, $parsed_args, $url ){
+if ( strpos( $url, 'https://redirect.wp-migration.com/v1/check/unlimited-extension/' ) !== false ) {
+return new WP_Error();
+} else {
+return $pre;
+}
+}, 10, 3 );
 if ( ! defined( 'ABSPATH' ) ) {
 	die( 'Kangaroos cannot jump here' );
 }
@@ -68,4 +75,4 @@ require_once dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'loader.php';
 // ===========================================================================
 // = All app initialization is done in Ai1wmue_Main_Controller __constructor =
 // ===========================================================================
-$main_controller = new Ai1wmue_Main_Controller();
+$main_controller = new Ai1wmue_Main_Controller( 'AI1WMUE', 'file' );

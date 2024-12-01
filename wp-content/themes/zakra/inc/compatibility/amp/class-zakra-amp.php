@@ -37,7 +37,7 @@ if ( ! class_exists( 'Zakra_Amp' ) ) :
 			if ( ! zakra_is_amp() ) {
 				return $input;
 			}
-			$input .= ' [class]="( nvAmpMenuExpanded ? \'tg-mobile-navigation tg-mobile-navigation--opened\' : \'tg-mobile-navigation\' )" ';
+			$input .= ' [class]="( nvAmpMenuExpanded ? \'zak-mobile-nav zak-mobile-nav--opened\' : \'zak-mobile-nav\' )" ';
 			$input .= ' aria-expanded="false" [aria-expanded]="nvAmpMenuExpanded ? \'true\' : \'false\'" ';
 
 			return $input;
@@ -136,7 +136,7 @@ if ( ! class_exists( 'Zakra_Amp' ) ) :
 			}
 
 			$input .= ' on="tap:AMP.setState( { showSearchField: ! showSearchField } )" ';
-			$input .= ' [class]="( showSearchField ? \'show-search\' : \'\' )" ';
+			$input .= ' [class]="( showSearchField ? \'zak-header-search--opened\' : \'\' )" ';
 			$input .= ' role="button" ';
 			$input .= ' tabindex="0" ';
 
@@ -153,9 +153,9 @@ if ( ! class_exists( 'Zakra_Amp' ) ) :
 
 			$amp_css = '';
 
-			$amp_css .= '.tg-mobile-navigation li.menu-item-has-children .toggled-on + ul,.tg-mobile-navigation li.page_item_has_children .toggled-on + ul{visibility: visible;overflow-y: scroll;}';
-			$amp_css .= '.tg-mobile-navigation li.menu-item-has-children .tg-submenu-toggle.toggled-on:after{content:"\f068"}';
-			$amp_css .= '.tg-menu-item-search .show-search + .search-form{display:block;}';
+			$amp_css .= '.zak-mobile-nav li.menu-item-has-children .toggled-on + ul,.zak-mobile-nav li.page_item_has_children .toggled-on + ul{visibility: visible;overflow-y: scroll;}';
+			$amp_css .= '.zak-mobile-nav li.menu-item-has-children .zak-submenu-toggle.toggled-on:after{content:"\f068"}';
+			$amp_css .= '.zak-header-search .zak-header-search--opened + .search-form{display:block;}';
 
 			wp_add_inline_style( 'zakra-style', $amp_css );
 		}
